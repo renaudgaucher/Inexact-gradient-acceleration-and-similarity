@@ -2,6 +2,9 @@
 
 This code built on the Byzfl librairy (https://byzfl.epfl.ch).
 
+To install this project, just go the project folder and use
+
+    > pip install .
 
 To reproduce the experiments showed in our paper, please iteratively run
 
