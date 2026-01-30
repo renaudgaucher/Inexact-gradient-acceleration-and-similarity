@@ -1,0 +1,8 @@
+LICENSE.txt
+README.md
+pyproject.toml
+byzfl/__init__.py
+byzfl.egg-info/PKG-INFO
+byzfl.egg-info/SOURCES.txt
+byzfl.egg-info/dependency_links.txt
+byzfl.egg-info/top_level.txt
