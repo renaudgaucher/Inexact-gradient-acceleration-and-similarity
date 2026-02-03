@@ -1,6 +1,6 @@
 # From Inexact Gradients to Byzantine Robustness: Acceleration and Optimization under Similarity
 
-This code built on the Byzfl librairy (https://byzfl.epfl.ch).
+This code is based on the Byzfl librairy (https://byzfl.epfl.ch).
 
 To install this project, just go the project folder and use
 
