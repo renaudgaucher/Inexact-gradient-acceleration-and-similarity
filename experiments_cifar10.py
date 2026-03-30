@@ -34,7 +34,7 @@ default_config = {
                 "optimizer_parameters": { 
                             "nesterov": True
                             },
-                "learning_rate": [0.1], # to tune
+                "learning_rate": [1.], # to tune
                 "learning_rate_decay": 1.0,
                 "milestones": []
                 }
@@ -46,7 +46,7 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [0.01], # to tune
+                "learning_rate": [ 1.], # to tune
                 "learning_rate_decay": 1.0,
                 "milestones": []
                 }
@@ -58,13 +58,13 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [.1], # to tune
+                "learning_rate": [32.], # to tune
                 "learning_rate_decay": 1.0,
                 "milestones": []
                 }
             },
         ],
-        "nb_steps": 50,
+        "nb_steps": 200,
     },
     "model": {
         "name": "cnn_cifar",
@@ -86,21 +86,21 @@ default_config = {
         }
     ],
     "honest_clients": {
-        "batch_size": 2**6 # full batch is 0, smaller batch size for easier configuration is good atm
+        "batch_size": 2**10 # full batch is 0, smaller batch size for easier configuration is good atm
     },
     "attack": [
         {
             "name": "Optimal_InnerProductManipulation",
             "parameters": {}
         },
-        {
-            "name": "Optimal_ALittleIsEnough",
-            "parameters": {}
-        },
+        # {
+        #     "name": "Optimal_ALittleIsEnough",
+        #     "parameters": {}
+        # },
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 20,
-        "batch_size_evaluation": 2**4, # to increase for more accuracy
+        "evaluation_delta": 100,
+        "batch_size_evaluation": 2**6, # to increase for more accuracy
         "evaluate_on_test": True,
         "store_per_client_metrics": True,
         "store_models": False,
@@ -113,4 +113,4 @@ default_config = {
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(1)
+    run_benchmark(2)
