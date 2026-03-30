@@ -1482,3 +1482,81 @@ class SMEA(object):
 
         selected_subset = compute_min_subset(vectors, dimension, n, self.f)
         return vectors[tools.asarray(selected_subset)].mean(axis=0)
+
+
+
+# class Huber(object):
+    
+#     r"""
+#     Description
+#     -----------
+
+#     Apply the Multivariate Huber estimator:
+
+#     Initialization parameters
+#     --------------------------
+#     m : numpy.ndarray, torch.Tensor, optional
+#         Initial value of the CenteredClipping aggregator.
+#         Default (None) makes it start from zero, a vector with all its coordinates equal to 0.
+#     f : int, optional
+#         Number of faulty vectors. Set to 0 by default.
+
+#     Calling the instance
+#     --------------------
+
+#     Input parameters
+#     ----------------
+#     vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
+#         A set of vectors, matrix or tensors.
+        
+#     Returns
+#     -------
+#     :numpy.ndarray or torch.Tensor
+#         The data type of the output will be the same as the input.
+
+#     Note
+#     ----
+
+#         If the instance is called more than once, the value of \\(m\\) used in
+#         the next call is equal to the output vector of the previous call.
+
+#     Note
+#     ----
+        
+#         In case the optional parameter \\(m\\) is specified when initializing 
+#         the instance, \\(m\\) has to be of the same type and shape as the input
+#         vectors \\(\\{x_1, \\dots, x_n\\}\\) used when calling the instance.
+
+#     """
+
+#     def __init__(self, m=None,f=0):
+#         if m is not None and (not isinstance(m, np.ndarray) or not isinstance(m, torch.Tensor)):
+#             raise TypeError("m must be of type np.ndarray or torch.Tensor")
+#         self.m = m
+#         if not isinstance(f, int) or f < 0:
+#             raise ValueError("f must be a non-negative integer")
+#         self.f = f
+
+#     def __call__(self, vectors):
+#         tools, vectors = check_vectors_type(vectors)
+
+#         if self.m is None:
+#             self.m = tools.zeros_like(vectors[0]).to(vectors[0].device)
+#         v = self.m
+#         for _ in range(self.L):
+#             differences = vectors - v
+            
+#             distance = distance_tool(vectors)
+#             dist = distance.cdist(vectors, vectors[self.idx].reshape(1,-1))
+#             k = n - self.f
+#             indices = tools.argpartition(dist.reshape(-1), k-1)[:k]
+#             return tools.mean(vectors[indices], axis=0)
+
+
+#             clip_factor = self.tau / tools.linalg.norm(differences, axis = 1)
+#             clip_factor = tools.minimum(tools.ones_like(clip_factor), clip_factor)
+#             differences = tools.multiply(differences, clip_factor.reshape(-1,1))
+#             v = tools.add(v, tools.mean(differences, axis=0))
+#         self.m = v
+#         return v
+

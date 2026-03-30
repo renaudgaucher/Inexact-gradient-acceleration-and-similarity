@@ -1010,7 +1010,7 @@ class Inf:
     
     def __call__(self, honest_vectors):
         tools, honest_vectors = check_vectors_type(honest_vectors)
-        return tools.full_like(honest_vectors[0], float('inf'), dtype=np.float64)
+        return tools.full_like(honest_vectors[0], float('inf'), dtype=np.float64, device=honest_vectors[0].device)
 
 
 class Gaussian:
@@ -1114,7 +1114,7 @@ class Gaussian:
         _, honest_vectors = check_vectors_type(honest_vectors)
         random = random_tool(honest_vectors)
         shape = honest_vectors.shape[1]
-        return random.normal(loc=self.mu, scale=self.sigma, size=shape)
+        return random.normal(loc=self.mu, scale=self.sigma, size=shape).to(device=honest_vectors[0].device, dtype=honest_vectors[0].dtype)
 
 
 # This attack method calculates the average of the honest vectors. 

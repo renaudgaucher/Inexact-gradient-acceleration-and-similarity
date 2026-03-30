@@ -331,9 +331,12 @@ class ProxClient(Client):
         ref_params = self.get_reference_params()
         grad_h_tilde = grad_h_tilde.detach()
 
+        # optimizer = torch.optim.LBFGS(
+        #     self.model.parameters(), lr=0.8, history_size=500, line_search_fn='strong_wolfe',
+        #     max_iter=2000, max_eval=20000,tolerance_grad=1e-13, tolerance_change=1e-32
+        #     )
         optimizer = torch.optim.LBFGS(
-            self.model.parameters(), lr=0.8, history_size=500, line_search_fn='strong_wolfe',
-            max_iter=2000, max_eval=20000,tolerance_grad=1e-13, tolerance_change=1e-32
+            self.model.parameters(), lr=0.8, line_search_fn='strong_wolfe'
             )
         
         inputs, targets = self._sample_train_batch()
@@ -360,54 +363,3 @@ class ProxClient(Client):
                       "prox gradients norm: " + str(last_grad_norm))
         
         return last_loss, last_grad_norm
-        # optimizer = torch.optim.SGD(
-        #     self.model.parameters(), lr=.1, 
-        # )
-        
-        # iter_gd = 200
-        # scheduler = torch.optim.lr_scheduler.PolynomialLR(
-        #         optimizer,
-        #         total_iters=iter_gd,
-        #         power=0.5
-        #     )
-        
-        # inputs, targets = self._sample_train_batch()
-        # inputs, targets = inputs.to(self.device), targets.to(self.device)
-        
-        # for i in range(iter_gd):
-            
-        #     optimizer.zero_grad()
-        #     loss = self.proximal_objective(
-        #         inputs=inputs,
-        #         targets=targets,
-        #         grad_h_tilde=grad_h_tilde,
-        #         ref_params=ref_params
-        #     )
-        #     loss.backward()
-        #     optimizer.step()
-        #     scheduler.step()
-        #     if i==0 and verbose==1:
-        #         print(".  Iteration " + str(i) + " prox_loss: " + str(loss.item()) + \
-        #               "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-        #     if loss < 1e-8:
-        #         break
-        # if verbose==1:
-        #     print(f"lr {self.prox_step_size}  Iteration " + str(i) + " prox_loss: " + str(loss.item()) + \
-        #               "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-
-
-        
-        
-        
-        # if verbose==1:
-        #     print("Starting Proximal Update")
-        #     loss = closure()
-        #     print("   prox_loss: " + str(loss.item()) + "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-
-        # optimizer.step(closure)
-
-        # if verbose==1:
-        #     print("Finished Proximal Update...")
-        #     loss = closure()
-        #     print("   prox_loss: " + str(loss.item()) + "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-        
