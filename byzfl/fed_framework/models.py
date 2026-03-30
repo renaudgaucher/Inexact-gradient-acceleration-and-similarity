@@ -211,7 +211,8 @@ class cnn_cifar(nn.Module):
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        x =self.fc3(x)
+        return F.log_softmax(x, dim=1)
 
 
 class BasicBlock(nn.Module):
