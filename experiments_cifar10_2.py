@@ -21,7 +21,7 @@ default_config = {
         "training_seed": 0,
         "nb_training_seeds": 1,
         "nb_honest_clients": 15, # to chose. For instance I guess n=20 + f = 1 or 2 is good
-        "f": [1], # to choose. Tune with f=0
+        "f": [2], # to choose. Tune with f=0
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1, 

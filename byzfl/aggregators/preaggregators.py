@@ -485,51 +485,57 @@ class ARC(object):
         return vectors
     
 
+class ClippedMixing(object):
+
+    r"""
+    Apply the Clipped Gossip Mixing pre-aggregation rule:
+
+    .. math::
 
 
-# class ClippedMixing(object):
+    Initialization parameters
+    --------------------------
+    f : int, optional
+        Number of faulty vectors. Set to 0 by default.
+    
+    Calling the instance
+    --------------------
 
-#     r"""
-#     Description
-
-#     """
-
-#     def __init__(self, f=0):
-#         if not isinstance(f, int) or f < 0:
-#             raise ValueError("f must be a non-negative integer")
-#         self.f = f
-
-#     def _clip_vector(self, vector, clip_threshold):
-#         tools, vector = check_vectors_type(vector)
-#         vector_norm = tools.linalg.norm(vector)
-#         if vector_norm > clip_threshold:
-#             vector = tools.multiply(vector, (clip_threshold / vector_norm))
-#         return vector
-
-#     def __call__(self, vectors):
-#         tools, vectors = check_vectors_type(vectors)
-#         if not self.f < len(vectors)+1:
-#             raise ValueError(f"f must be smaller than len(vectors)+1, but got f={self.f} and len(vectors)={len(vectors)}")
+    Input parameters
+    ----------------
+    vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
+        A set of vectors, matrix or tensors.
         
-#         magnitudes = [(tools.linalg.norm(vector), vector_id) for vector_id, vector in enumerate(vectors)]
-#         magnitudes.sort(key=lambda x:x[0])
-#         nb_vectors = len(vectors)
-#         nb_clipped = int((2 * self.f / nb_vectors) * (nb_vectors - self.f))
-#         cut_off_value = nb_vectors - nb_clipped
-#         f_largest = magnitudes[cut_off_value:]
-#         clipping_threshold = magnitudes[cut_off_value - 1][0]
-#         for _, vector_id in f_largest:
-#             vectors[vector_id] = self._clip_vector(vectors[vector_id], clipping_threshold)
-#         return vectors
+    Returns
+    -------
+    :numpy.ndarray or torch.Tensor
+        The data type of the output will be the same as the input.
 
-#     def __call__(self, vectors):
-#         tools, vectors = check_vectors_type(vectors)
-#         if not self.f < len(vectors):
-#             raise ValueError(f"f must be smaller than len(vectors), but got f={self.f} and len(vectors)={len(vectors)}")
+    Examples
+    --------
+        
 
-#         distance = distance_tool(vectors)
-#         dist = distance.cdist(vectors, vectors)
-#         k = len(vectors) - self.f
-#         indices = tools.argpartition(dist, k-1, axis = 1)[:,:k]
-#         return tools.mean(vectors[indices], axis = 1)
+    """
+
+    def __init__(self, f=0):
+        if not isinstance(f, int) or f < 0:
+            raise ValueError("f must be a non-negative integer")
+        self.f = f
+
+    def __call__(self, vectors):
+        tools, vectors = check_vectors_type(vectors))
+        n = len(vectors)
+        k = n - 2*self.f
+        
+        differences = vectors.unsqueeze(1) - vectors.unsqueeze(0)
+        distances = tools.norm(differences, dim=-1).clamp(min=1e-8)
+        thresholds = tools.sort(distances,axis=1)[:,k-1]
+        
+        scaling = torch.min(thresholds.unsqueeze(1), distances) / distances
+        clipped_diff = differences * scaling.unsqueeze(2)
+
+        mean_clipped_diff = tools.mean(clipped_diff, dim=1)
+        return vectors - mean_clipped_diff # TODO: check if this is the right sign
+
+
 
