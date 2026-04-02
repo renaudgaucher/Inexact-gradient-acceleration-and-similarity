@@ -21,7 +21,7 @@ default_config = {
         "training_seed": 0,
         "nb_training_seeds": 1,
         "nb_honest_clients": 15, # to chose. For instance I guess n=20 + f = 1 or 2 is good
-        "f": [1], # to choose. Tune with f=0
+        "f": [1],#, 2], # to choose. Tune with f=0
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1, 
@@ -56,18 +56,18 @@ default_config = {
                 "milestones": []
                 }
             },
-            {
-            "name": "FedProxyProx", # This is ProxyProx
-            "parameters": {
-                "optimizer_name": "SGD",
-                "momentum": [0.],
-                "optimizer_parameters": { 
-                            },
-                "learning_rate": [1.], # tuned for cifar10 beta=5.
-                "learning_rate_decay": 1.0,
-                "milestones": []
-                }
-            },
+            # {
+            # "name": "FedProxyProx", # This is ProxyProx
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate": [1.], # tuned for cifar10 beta=5.
+            #     "learning_rate_decay": 1.0,
+            #     "milestones": []
+            #     }
+            # },
         ],
         "nb_steps": 2000,
     },
@@ -102,14 +102,14 @@ default_config = {
             "name": "Optimal_ALittleIsEnough",
             "parameters": {}
         },
-        {
-            "name": "Gaussian",
-            "parameters": {}
-        },
-        {
-            "name": "SignFlipping",
-            "parameters": {}
-        },
+        # {
+        #     "name": "Gaussian",
+        #     "parameters": {}
+        # },
+        # {
+        #     "name": "SignFlipping",
+        #     "parameters": {}
+        # },
     ],
     "evaluation_and_results": {
         "evaluation_delta": 25,
@@ -117,6 +117,8 @@ default_config = {
         "evaluate_on_test": True,
         "store_per_client_metrics": True,
         "store_models": False,
+        "cache_test": True, # to speed up evaluation
+        "cache_train": True, # to speed up test
         "data_folder": "/tmp", #"./data",
         "results_directory": "./results/mnist_cifar10_7",
     }
@@ -126,4 +128,4 @@ default_config = {
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(4)
+    run_benchmark(3)

@@ -760,7 +760,7 @@ class CenteredClipping(object):
            International Conference on Machine Learning (ICML), 2021.
     """
 
-    def __init__(self, m=None, L=1, tau=100.0):
+    def __init__(self, m=None, L=1, tau=1.0):
         if m is not None and (not isinstance(m, np.ndarray) or not isinstance(m, torch.Tensor)):
             raise TypeError("m must be of type np.ndarray or torch.Tensor")
         self.m = m
@@ -1546,20 +1546,22 @@ class Huber(object):
         if self.m is None:
             self.m = tools.zeros_like(vectors[0]).to(vectors[0].device)
         v = self.m
+        n = len(vectors)
+        k = -min(n, 2*self.f)
         for _ in range(self.L):
             differences = vectors - v
-            distances = tools.linalg.norm(differences, axis = 1)
-            k = n - 2*self.f
-            sorted_dist ,_ = tools.sort(distances)[k]
-            clip_threshold = sorted_dist[k-1]
+            distances = tools.sum(differences**2, axis = -1)**0.5
+            distances = distances + 1e-8 * (distances < 1e-8)
+            sorted_dist = tools.sort(distances)
+            clip_threshold = sorted_dist[k]
 
             clip_factor = clip_threshold / distances
             clip_factor = tools.minimum(tools.ones_like(clip_factor), clip_factor)
             differences = tools.multiply(differences, clip_factor.reshape(-1,1))
             v_new = tools.add(v, tools.mean(differences, axis=0))
-            if tools.linalg.norm(v_new - v) < 1e-6:
+            if tools.sum((v_new - v)**2)**0.5 < 1e-6:
                 break
             v = v_new
         
-        self.m = v
+        return v
 

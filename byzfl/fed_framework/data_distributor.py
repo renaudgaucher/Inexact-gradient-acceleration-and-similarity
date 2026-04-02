@@ -2,6 +2,7 @@ import numpy as np
 import torch, random
 from torch.utils.data import DataLoader
 
+
 class DataDistributor:
     """
     Initialization Parameters
@@ -85,6 +86,9 @@ class DataDistributor:
             raise ValueError("batch_size must be a non-negative integer")
         self.batch_size = params["batch_size"]
 
+        self.pin_memory = params.get("pin_memory", True)
+        self.num_workers = params.get("num_workers", 0)
+        self.persistent_workers = params.get("persistent_workers", False)
 
     def split_data(self):
         """
@@ -225,6 +229,62 @@ class DataDistributor:
                 batch_size = len(subset)
             else:
                 batch_size = self.batch_size
-            data_loader = DataLoader(subset, batch_size=batch_size, shuffle=True)
+            data_loader = DataLoader(subset, batch_size=batch_size, shuffle=True, 
+                pin_memory=self.pin_memory, num_workers=self.num_workers, persistent_workers=self.persistent_workers)
             data_loaders.append(data_loader)
         return data_loaders
+
+
+class LazyCachedDataset(torch.utils.data.Dataset):
+    """Dataset wrapper that caches samples on first access (lazy caching)."""
+
+    def __init__(self, dataset, transform=None, preload=False):
+        self.dataset = dataset
+        self.transform = transform if transform is not None else getattr(dataset, "transform", None)
+
+        self.targets = getattr(dataset, "targets", None)
+        self.classes = getattr(dataset, "classes", None)
+        self._cache = {}
+
+        if preload:
+            for i in range(len(dataset)):
+                self._cache[i] = self._process_item(dataset[i])
+
+            if self.targets is None and len(self._cache) > 0:
+                self.targets = torch.tensor([item[1] for item in self._cache.values()])
+
+    def _process_item(self, item):
+        if self.transform is None:
+            return item
+
+        if isinstance(item, (tuple, list)) and len(item) >= 2:
+            x, y = item[0], item[1]
+            if not isinstance(x, torch.Tensor):
+                x = self.transform(x)
+            return (x, y)
+
+        if isinstance(item, torch.Tensor):
+            return item
+
+        return self.transform(item)
+
+    def __getattr__(self, name):
+        return getattr(self.dataset, name)
+
+    def __getitem__(self, idx):
+        if idx in self._cache:
+            return self._cache[idx]
+
+        item = self.dataset[idx]
+        self._cache[idx] = self._process_item(item)
+        return self._cache[idx]
+
+    def __len__(self):
+        return len(self.dataset)
+
+
+class CachedDataset(LazyCachedDataset):
+    """Preserving original behavior: preload all samples in memory immediately."""
+
+    def __init__(self, dataset, transform=None):
+        super().__init__(dataset, transform=transform, preload=True)

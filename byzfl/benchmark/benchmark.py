@@ -221,17 +221,22 @@ def run_training(params):
     params : dict
         A dictionary containing all necessary parameters for the training job.
     """
-    print(params["attack"]['name'], params["aggregator"]['name'], params["benchmark_config"]['f'], 
-    params['benchmark_config']['training_algorithm']['name'],params['benchmark_config']['training_algorithm']['name'])
-    result = start_training(params)
-    with counter.get_lock():
-        print(f"Training {counter.value} done")
-        counter.value += 1
-    # try:
-        
-    #     return {"success": True, "result": result}
-    # except Exception as e:
-    #     return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+    print(params["attack"]['name'],  params["aggregator"]['name'], params["benchmark_config"]['f'], 
+    params['benchmark_config']['training_algorithm']['name'],params['benchmark_config']['training_algorithm']['parameters']['learning_rate']) #params.get("pre_aggregators",[{'name': 'none'}])[0]['name'],
+    
+    # result = start_training(params)
+    # with counter.get_lock():
+    #     print(f"Training {counter.value} done")
+    #     counter.value += 1
+    
+    try:
+        result = start_training(params)
+        with counter.get_lock():
+            print(f"Training {counter.value} done")
+            counter.value += 1
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
     
     
 
@@ -602,6 +607,7 @@ def run_benchmark(nb_jobs=1, config_name='config.json'):
         results=pool.map(run_training, dict_list)
     
     print("All trainings finished.")
+    
     
     # Print errors if any
     for i, result in enumerate(results):

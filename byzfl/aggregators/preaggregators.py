@@ -523,19 +523,52 @@ class ClippedMixing(object):
         self.f = f
 
     def __call__(self, vectors):
-        tools, vectors = check_vectors_type(vectors))
+        tools, vectors = check_vectors_type(vectors)
         n = len(vectors)
-        k = n - 2*self.f
+        k = - min(2*self.f,n)
+        differences = tools.expand_dims(vectors,axis=1) - tools.expand_dims(vectors,axis=0)
+        distances = tools.sum(differences**2, axis=-1)**0.5
+        distances = distances + (distances < 1e-8) * 1e-8 
+        thresholds = tools.sort(distances,axis=1)[:,k]
+        scaling = tools.minimum(tools.expand_dims(thresholds,axis=1), distances) / distances
+        clipped_diff = differences * tools.expand_dims(scaling,axis=2)
+
+        mean_clipped_diff = tools.mean(clipped_diff, axis=1)
+        return vectors - mean_clipped_diff 
+
+
+
+# class Identity(object):
+
+#     r"""
+#     Place holder for a non-robust pre-aggregation rule that simply returns the input vectors without any modification.
+    
+
+#     Initialization parameters
+#     --------------------------
+
+    
+#     Calling the instance
+#     --------------------
+
+#     Input parameters
+#     ----------------
+#     vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
+#         A set of vectors, matrix or tensors.
         
-        differences = vectors.unsqueeze(1) - vectors.unsqueeze(0)
-        distances = tools.norm(differences, dim=-1).clamp(min=1e-8)
-        thresholds = tools.sort(distances,axis=1)[:,k-1]
+#     Returns
+#     -------
+#     :numpy.ndarray or torch.Tensor
+#         The data type of the output will be the same as the input.
+
+#     Examples
+#     --------
         
-        scaling = torch.min(thresholds.unsqueeze(1), distances) / distances
-        clipped_diff = differences * scaling.unsqueeze(2)
 
-        mean_clipped_diff = tools.mean(clipped_diff, dim=1)
-        return vectors - mean_clipped_diff # TODO: check if this is the right sign
+#     """
 
+#     def __init__(self):
+#         pass
 
-
+#     def __call__(self, vectors):
+#         return vectors

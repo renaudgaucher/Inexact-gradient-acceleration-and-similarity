@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
-from byzfl import Client, ProxClient, Server, ByzantineClient, DataDistributor
+from byzfl import Client, ProxClient, Server, ByzantineClient, DataDistributor, CachedDataset, LazyCachedDataset
 from byzfl.utils.misc import set_random_seed
 from byzfl.benchmark.managers import ParamsManager, FileManager
 
@@ -112,16 +112,23 @@ def start_training(params):
     # Split Train set into Train and Validation
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    # Apply transformations to each dataset
-    train_dataset.dataset.transform = dict_datasets[key_dataset_name][1]
-    val_dataset.dataset.transform = dict_datasets[key_dataset_name][2]
+    # Apply transformations + use lazy caching so initialization is faster
+    train_transform = dict_datasets[key_dataset_name][1]
+    val_transform = dict_datasets[key_dataset_name][2]
+
+    if params_manager.get_cache_train():
+        train_dataset.dataset = LazyCachedDataset(train_dataset.dataset, transform=train_transform)
+        val_dataset.dataset = LazyCachedDataset(val_dataset.dataset, transform=val_transform)
 
     # Prepare Validation and Test data
     if len(val_dataset) > 0:
         val_loader = DataLoader(
             val_dataset, 
             batch_size=params_manager.get_batch_size_evaluation(), 
-            shuffle=False
+            shuffle=False,
+            pin_memory=True,
+            num_workers=0,
+            persistent_workers=False
         )
     else:
         val_loader = None
@@ -130,13 +137,19 @@ def start_training(params):
                 root = params_manager.get_data_folder(),
                 train=False, 
                 download=True,
-                transform=dict_datasets[key_dataset_name][2]
+                transform=dict_datasets[key_dataset_name][2],
     )
+
+    if params_manager.get_cache_test():
+        test_dataset.dataset = LazyCachedDataset(test_dataset)
 
     test_loader = DataLoader(
         test_dataset, 
         batch_size=params_manager.get_batch_size_evaluation(), 
-        shuffle=False
+        shuffle=False,
+        pin_memory=True,
+        num_workers=0,
+        persistent_workers=False
     )
 
     # Distribute data among clients using non-IID Dirichlet distribution
@@ -258,6 +271,8 @@ def start_training(params):
 
     # Training Loop
     for training_step in range(nb_training_steps):
+        if training_step % (max(nb_training_steps // 100, 1)) == 0:
+            print(f"Training Step {training_step+1}/{nb_training_steps}")
 
         # Evaluate Global Model Every Evaluation Delta Steps
         if training_step % evaluation_delta == 0:

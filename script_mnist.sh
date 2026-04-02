@@ -15,4 +15,4 @@ module load conda
 module load cudnn
 module load cuda
 conda activate renv2
-python3 experiments_cifar10.py
+python3 experiments_mnist_logreg_longrun_denfense.py
