@@ -32,38 +32,37 @@ default_config = {
             "name": "DSGD", ### This is NAG
             "parameters": {
                 "optimizer_name": "SGD",
-                "momentum": [0.99],# tuned for cifar10
+                "momentum": [0.9],# tuned for cifar10
                 "optimizer_parameters": { 
                             "nesterov": True
                             },
-                "learning_rate": [0.01], # tuned for cifar
+                "learning_rate": [0.05], # tuned for cifar
                 "learning_rate_decay": 1.0,
                 "milestones": []
                 }
             },
-            {
-            "name": "moDSGD", # This is SGD
-            "parameters": {
-                "optimizer_name": "SGD",
-                "momentum": [0.],
-                "optimizer_parameters": { 
-                            },
-                "learning_rate": [0.5], # tuned for cifar10
-                "milestones": []
-                }
-            },
-            {
-            "name": "FedProxyProx", # This is ProxyProx
-            "parameters": {
-                "optimizer_name": "SGD",
-                "momentum": [0.],
-                "optimizer_parameters": { 
-                            },
-                "learning_rate": [1.], # tuned for cifar10 beta=5.
-                "learning_rate_decay": 1.0,
-                "milestones": []
-                }
-            },
+            # {
+            # "name": "moDSGD", # This is SGD
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate": [0.5, 0.1], # tuned for cifar10
+            #     "milestones": []
+            #     }
+            # },
+            # {
+            # "name": "FedProxyProx", # This is ProxyProx
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": {},
+            #     "learning_rate": [1.], # tuned for cifar10 beta=5.
+            #     "learning_rate_decay": 1.0,
+            #     "milestones": []
+            #     }
+            # },
         ],
         "nb_steps": 2000,
     },

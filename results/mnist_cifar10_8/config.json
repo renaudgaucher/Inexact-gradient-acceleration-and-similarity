@@ -25,42 +25,13 @@
                 "parameters": {
                     "optimizer_name": "SGD",
                     "momentum": [
-                        0.99
+                        0.9
                     ],
                     "optimizer_parameters": {
                         "nesterov": true
                     },
                     "learning_rate": [
-                        0.01
-                    ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
-                }
-            },
-            {
-                "name": "moDSGD",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.0
-                    ],
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        0.5
-                    ],
-                    "milestones": []
-                }
-            },
-            {
-                "name": "FedProxyProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.0
-                    ],
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        1.0
+                        0.05
                     ],
                     "learning_rate_decay": 1.0,
                     "milestones": []
@@ -96,11 +67,11 @@
     },
     "attack": [
         {
-            "name": "Gaussian",
+            "name": "Optimal_InnerProductManipulation",
             "parameters": {}
         },
         {
-            "name": "SignFlipping",
+            "name": "Optimal_ALittleIsEnough",
             "parameters": {}
         }
     ],

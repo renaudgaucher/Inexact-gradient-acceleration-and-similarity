@@ -1,0 +1,76 @@
+{
+    "benchmark_config": {
+        "device": "cuda",
+        "training_seed": 0,
+        "nb_training_seeds": 1,
+        "nb_workers": 21,
+        "nb_honest_clients": 20,
+        "f": 1,
+        "tolerated_f": 1,
+        "set_honest_clients_as_clients": false,
+        "size_train_set": 0.8,
+        "data_distribution_seed": 0,
+        "nb_data_distribution_seeds": 1,
+        "data_distribution": {
+            "name": "dirichlet_niid",
+            "distribution_parameter": 5.0
+        },
+        "training_algorithm": {
+            "name": "DSGD",
+            "parameters": {
+                "optimizer_name": "SGD",
+                "momentum": 0.9,
+                "optimizer_parameters": {
+                    "nesterov": true
+                },
+                "learning_rate": 0.05,
+                "learning_rate_decay": 1.0,
+                "milestones": []
+            }
+        },
+        "nb_steps": 2000
+    },
+    "model": {
+        "name": "cnn_cifar",
+        "dataset_name": "cifar10",
+        "nb_labels": 10,
+        "loss": "NLLLoss",
+        "weight_decay": 0.01,
+        "learning_rate": 0.05,
+        "learning_rate_decay": 1.0,
+        "milestones": []
+    },
+    "aggregator": {
+        "name": "TrMean",
+        "parameters": {
+            "f": 1
+        }
+    },
+    "pre_aggregators": [
+        {
+            "name": "NNM",
+            "parameters": {
+                "f": 1
+            }
+        }
+    ],
+    "honest_clients": {
+        "momentum": 0.9,
+        "batch_size": 0
+    },
+    "attack": {
+        "name": "Optimal_ALittleIsEnough",
+        "parameters": {}
+    },
+    "evaluation_and_results": {
+        "evaluation_delta": 25,
+        "batch_size_evaluation": 512,
+        "evaluate_on_test": true,
+        "store_per_client_metrics": true,
+        "store_models": false,
+        "data_folder": "/tmp",
+        "results_directory": "./results/mnist_cifar10_8",
+        "cache_test": true,
+        "cache_train": true
+    }
+}
