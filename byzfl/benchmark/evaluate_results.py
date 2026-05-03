@@ -10,6 +10,39 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset,
 import seaborn as sns
 
 
+size=16
+size_legend=16
+mpl.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    'font.family': 'serif',
+    'font.serif': 'Roman',
+    'font.weight':'bold',
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+    "axes.grid" : True,
+    'font.size': size,
+    'axes.labelsize':size,
+    'axes.titlesize':size,
+    'figure.titlesize':size,
+    'xtick.labelsize':size,
+    'ytick.labelsize':size,
+    'legend.fontsize':size_legend
+})
+
+name_algorithms ={
+    "DSGD":"D-NAG",
+    "moDSGD":"D-GD",
+    "FedProxyProx":"PIGS",
+}
+name_attack ={
+    "Optimal_InnerProductManipulation":"IPM",
+    "Optimal_ALittleIsEnough":"ALIE",
+    "NoAttack":"No Attack",
+    "Gaussian":"Gaussian",
+    "SignFlipping":"Sign Flipping"
+
+}
+
 def ensure_list(value):
     if isinstance(value, list):
         return value
@@ -62,7 +95,8 @@ def normalize_pre_aggregators(value):
 def join_pre_agg_names(pre_agg):
     if not pre_agg:
         return ""
-    return "_".join([x.get("name", "") if isinstance(x, dict) else str(x) for x in pre_agg if x])
+    out = "_".join([x.get("name", "") if isinstance(x, dict) else str(x) for x in pre_agg if x])
+    return out
 
 
 def custom_dict_to_str(dictionary):
@@ -71,11 +105,11 @@ def custom_dict_to_str(dictionary):
 
 def experiment_base_name(dataset_name, model_name, training_algorithm, nb_nodes,
                          nb_byzantine, nb_decl, data_dist_name, distribution_parameter,
-                         agg_name, pre_agg_names,attack):
+                         agg_name, pre_agg_names,attack=None):
     out = f"{dataset_name}_{model_name}_{training_algorithm}_n_{nb_nodes}_f_{nb_byzantine}_"
     out += f"d_{nb_decl}_{custom_dict_to_str(data_dist_name)}_{distribution_parameter}_"
     out += f"{custom_dict_to_str(agg_name)}_{pre_agg_names}"
-    if attack != "":
+    if attack != "" and attack is not None:
          out += f"_{custom_dict_to_str(attack)}"
     return out
 
@@ -126,14 +160,17 @@ def compute_nb_accuracies(nb_steps, evaluation_delta):
     return int(1 + math.ceil(nb_steps / evaluation_delta))
 
 
-def group_scenarios(scenarios, vary_key):
+def group_scenarios(scenarios, group_key):
     from collections import defaultdict
     groups = defaultdict(list)
     for s in scenarios:
-        # Create a key from all items except vary_key, converting to strings for hashability
-        key_items = sorted((k, str(v)) for k, v in s.items() if k != vary_key)
-        key = tuple(key_items)
+        key = s[group_key].get('name') if isinstance(s[group_key], dict) else s[group_key]
         groups[key].append(s)
+        # # Create a key from all items except group_key, converting to strings for hashability
+        # key_items = sorted((k, str(v)) for k, v in s.items() if k != group_key)
+        # key = tuple(key_items)
+        # groups[key].append(s)
+    print(groups.keys())
     return list(groups.values())
 
 
@@ -183,6 +220,34 @@ def get_name_dimension(scenario, dimension_key):
     if isinstance(value, dict):
         return value.get("name", str(value))
     return str(value)
+
+
+def pretty_name(dimension_key, value):
+    if isinstance(value, dict):
+        value_name = value.get("name", "")
+    else:
+        value_name = str(value)
+
+    if dimension_key == "attack":
+        return name_attack.get(value_name, value_name)
+    if dimension_key == "training_algorithm":
+        return name_algorithms.get(value_name, value_name)
+    return value_name
+
+
+def moving_average_variable_border(y, window):
+    if window <= 1:
+        return y
+    n = len(y)
+    out = np.empty_like(y, dtype=float)
+    half_left = (window - 1) // 2
+    half_right = window // 2
+    for i in range(n):
+        start = max(0, i - half_left)
+        end = min(n - 1, i + half_right)
+        out[i] = y[start:end + 1].mean()
+    return out
+
 
 def find_best_hyperparameters(path_to_results):
     cfg = load_config(path_to_results)
@@ -257,14 +322,14 @@ def find_best_hyperparameters(path_to_results):
             )
 
 
-def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", vary_dimension="attack", title_dimension=None,
-                      xlim=None, ylim=None, colors=None, markers=None, dashstyle=None, zoom_inset=False):
+def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", group_dimension="attack", label_dimension=None, show_lr_mom=False,
+                      xlim=None, ylim=None, colors=None, markers=None, dashstyle=None, zoom_inset=False, mv_avg_window=1):
     """
     General function to plot accuracy or loss curves with flexible varying dimensions.
     
     Parameters:
     - metric: "test_accuracy", "train_accuracy", "train_loss"
-    - vary_dimension: dimension to vary (e.g., "attack", "training_algorithm")
+    - group_dimension: dimension that vary between each plot (experiments are grouped by this dimension)
     - xlim, ylim: axis limits (tuples or None)
     - zoom_inset: whether to add a zoomed inset (for loss plots)
     """
@@ -280,25 +345,32 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", var
     path_to_hyper = os.path.join(path_to_results, "best_hyperparameters")
 
     scenarios = for_each_experiment(cfg)
-    groups = group_scenarios(scenarios, vary_dimension)
-
+    groups = group_scenarios(scenarios, group_dimension)
+    
     for group in groups:
+        group_value = group[0][group_dimension].get('name') if isinstance(group[0][group_dimension], dict) else group[0][group_dimension]
+        print(group_value)
+        
         nb_accuracies = compute_nb_accuracies(cfg["nb_steps"], cfg["evaluation_delta"])
         # Use first scenario for common parts
-        first_scenario = group[0]
-        base_name_common = experiment_base_name_from_scenario(first_scenario, cfg, exclude_keys=[vary_dimension])
         tab_data = []
         tab_x = []
         labels = []
         for scenario in group:
+            # Load hyperparameters using a common base_name (exclude only attack, keep training_algorithm)
             base_name = experiment_base_name_from_scenario(scenario, cfg, exclude_keys=['attack'])
-            lr, mom, wd = load_hyperparameters(path_to_hyper, base_name, (scenario["lr_list"][0] if scenario["lr_list"] else 0,
-                                                                          scenario["momentum_list"][0] if scenario["momentum_list"] else 0,
-                                                                          cfg["weight_decay"][0] if cfg["weight_decay"] else 0))
+            if not show_lr_mom:
+                lr, mom, wd = load_hyperparameters(path_to_hyper, base_name, (scenario["lr_list"][0] if scenario["lr_list"] else 0,
+                                                                              scenario["momentum_list"][0] if scenario["momentum_list"] else 0,
+                                                                              cfg["weight_decay"][0] if cfg["weight_decay"] else 0))
+            else:
+                lr, mom, wd = scenario["lr_list"][0], scenario["momentum_list"][0], cfg["weight_decay"][0] if cfg["weight_decay"] else 0
+
             scenario_data = []
 
             for run_dd in range(cfg["nb_data_distribution_seeds"]):
                 for run in range(cfg["nb_training_seeds"]):
+                    # Construct full filename with attack
                     full_name = f"{base_name}_{custom_dict_to_str(scenario["attack"].get('name'))}_lr_{lr}_mom_{mom}_wd_{wd}"
                     if metric == "test_accuracy":
                         file_path = experiment_path(path_to_results, full_name, "test", run + cfg["training_seed"], run_dd + cfg["data_distribution_seed"])
@@ -331,14 +403,19 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", var
                 aligned = np.vstack(scenario_data)
                 tab_data.append(aligned)
                 tab_x.append(np.arange(nb_accuracies) * cfg["evaluation_delta"])
-            labels.append(scenario[vary_dimension].get("name") if isinstance(scenario[vary_dimension], dict) else str(scenario[vary_dimension]))
+            
+            labels.append(pretty_name(label_dimension, scenario[label_dimension]))
+            if show_lr_mom:
+                labels[-1] += f" (lr={lr}, mom={mom})"
         
         # Now plot
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8, 5))
         for i, (data, label) in enumerate(zip(tab_data, labels)):
             y = np.mean(data, axis=0)
             # err = (1.96 * np.std(data, axis=0)) / math.sqrt(cfg["nb_training_seeds"] * cfg["nb_data_distribution_seeds"])
             x = tab_x[i]
+            if metric == "train_loss":
+                y = moving_average_variable_border(y, mv_avg_window)
             ax.plot(x, y, label=label, color=colors[i % len(colors)], linestyle=dashstyle[i % len(dashstyle)], marker=None, markevery=1)# markers[i % len(markers)]
             # ax.fill_between(x, y - err, y + err, alpha=0.25)
             
@@ -377,24 +454,26 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", var
             axins.set_ylim(0, min(max_y, 2))    # Example zoom at top
             mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
         
-        if vary_dimension is not None and vary_dimension != title_dimension:
-            plt.title(f"{get_name_dimension(scenario, title_dimension)} vs {vary_dimension.replace('_', ' ').title()}")
-        
-        plot_name = f"{base_name_common}_{metric}_{vary_dimension}s"
+        if True:
+            plt.title(f"{pretty_name(group_dimension, scenario[group_dimension])}")
+        plt.tight_layout()
+
+
+        plot_name = f"{metric}_{group_value}"
         plt.savefig(os.path.join(path_to_plot, f"{plot_name}_plot.pdf"))
         plt.close()
 
 
 # Backward compatibility
-def test_accuracy_curve(path_to_results, path_to_plot, vary_dimension="attack", colors=None, markers=None, dashstyle=None):
-    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", vary_dimension=vary_dimension, 
+def test_accuracy_curve(path_to_results, path_to_plot, group_dimension="attack", colors=None, markers=None, dashstyle=None):
+    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", group_dimension=group_dimension, 
                       colors=colors, markers=markers, dashstyle=dashstyle)
 
 
 def paper_used_plots_with_ref(path_to_results, path_to_plot):
     """
     Generates the plots used in the paper, with references to specific configurations.
-    This function calls the flexible plotting functions with predefined metrics and vary_dimensions
+    This function calls the flexible plotting functions with predefined metrics and group_dimensions
     to produce the key figures from the Byzantine FL robustness analysis.
 
     References:
@@ -407,19 +486,19 @@ def paper_used_plots_with_ref(path_to_results, path_to_plot):
 
     # Figure: Accuracy curves comparing different attacks (e.g., IPM, ALIE, No Attack)
     print("Plotting attack comparisons (test accuracy)...")
-    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", vary_dimension="attack")
+    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", group_dimension="attack")
 
     # Figure: Accuracy curves comparing different training algorithms (e.g., DSGD, FedProxyProx)
     print("Plotting training algorithm comparisons (test accuracy)...")
-    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", vary_dimension="training_algorithm")
+    plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", group_dimension="training_algorithm")
 
     # Figure: Training loss curves comparing different training algorithms
     print("Plotting training loss for algorithms...")
-    plot_metric_curve(path_to_results, path_to_plot, metric="train_loss", vary_dimension="training_algorithm", 
+    plot_metric_curve(path_to_results, path_to_plot, metric="train_loss", group_dimension="training_algorithm", 
                       ylim=(0, 5), zoom_inset=True)  # Example limits and zoom
 
     # Additional plots can be added here, e.g., for aggregators or other metrics
     # For example:
-    # plot_metric_curve(path_to_results, path_to_plot, metric="train_accuracy", vary_dimension="agg")
+    # plot_metric_curve(path_to_results, path_to_plot, metric="train_accuracy", group_dimension="agg")
 
     print("Paper plots generated successfully.")

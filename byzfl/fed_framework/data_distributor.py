@@ -86,7 +86,7 @@ class DataDistributor:
             raise ValueError("batch_size must be a non-negative integer")
         self.batch_size = params["batch_size"]
 
-        self.pin_memory = params.get("pin_memory", True)
+        self.pin_memory = params.get("pin_memory", torch.cuda.is_available())
         self.num_workers = params.get("num_workers", 0)
         self.persistent_workers = params.get("persistent_workers", False)
 

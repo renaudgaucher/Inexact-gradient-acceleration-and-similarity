@@ -538,37 +538,37 @@ class ClippedMixing(object):
 
 
 
-# class Identity(object):
+class Identity(object):
 
-#     r"""
-#     Place holder for a non-robust pre-aggregation rule that simply returns the input vectors without any modification.
+    r"""
+    Place holder for a non-robust pre-aggregation rule that simply returns the input vectors without any modification.
     
 
-#     Initialization parameters
-#     --------------------------
+    Initialization parameters
+    --------------------------
 
     
-#     Calling the instance
-#     --------------------
+    Calling the instance
+    --------------------
 
-#     Input parameters
-#     ----------------
-#     vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
-#         A set of vectors, matrix or tensors.
+    Input parameters
+    ----------------
+    vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
+        A set of vectors, matrix or tensors.
         
-#     Returns
-#     -------
-#     :numpy.ndarray or torch.Tensor
-#         The data type of the output will be the same as the input.
+    Returns
+    -------
+    :numpy.ndarray or torch.Tensor
+        The data type of the output will be the same as the input.
 
-#     Examples
-#     --------
+    Examples
+    --------
         
 
-#     """
+    """
 
-#     def __init__(self):
-#         pass
+    def __init__(self):
+        pass
 
-#     def __call__(self, vectors):
-#         return vectors
+    def __call__(self, vectors):
+        return vectors

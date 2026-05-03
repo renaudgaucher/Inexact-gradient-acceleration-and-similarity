@@ -27,6 +27,7 @@ class ModelBaseInterface(object):
         # Initialize optimizer. If set to None, it means that the Client does not need this information 
         optimizer_name = params["optimizer_name"]
         if optimizer_name is not None:
+            self.learning_rate = params["learning_rate"]
             optimizer_params = params["optimizer_params"]
             optimizer_class = getattr(torch.optim, optimizer_name, None)
             if optimizer_class is None:

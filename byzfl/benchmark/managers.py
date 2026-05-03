@@ -332,6 +332,21 @@ class ParamsManager(object):
         path = ["benchmark_config", "training_algorithm", "parameters", "prox_step_size"]
         read = self._read_object(path)
         return self._parameter_to_use(default, read)
+    
+    def get_prox_optimizer_name(self):
+        default = "SGD"
+        path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizer_name"]
+        read = self._read_object(path)
+        if read is None:
+            path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizaer_name"]
+            read = self._read_object(path)
+        return self._parameter_to_use(default, read)
+   
+    def get_prox_optimizer_params(self):
+        default = {}
+        path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizer_params"]
+        read = self._read_object(path)
+        return self._parameter_to_use(default, read)
 
     def get_learning_rate_decay(self):
         default = 1.0
