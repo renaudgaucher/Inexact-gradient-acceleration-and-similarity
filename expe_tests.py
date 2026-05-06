@@ -4,7 +4,6 @@ import json
 
 import numpy as np
 import pytest
-import torch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '')))
 from byzfl import run_benchmark
@@ -16,28 +15,43 @@ default_config = {
         "training_seed": 0,
         "nb_training_seeds": 1,
         "nb_honest_clients": 20,
-        "f": [2],#,5], 
+        "f": [0],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1,
         "data_distribution": [
+            # {
+            #     "name": "iid",
+            #     "distribution_parameter": [None], 
+            # },    
             {
                 "name": "dirichlet_niid",
-                "distribution_parameter": [.1], 
+                "distribution_parameter": [1.], 
             },
         ],
         "training_algorithm": [
             # {
-            # "name": "DSGD",
+            # "name": "AccExtraGradProx",
             # "parameters": {
             #     "optimizer_name": "SGD",
-            #     "momentum": [0.9],
+            #     "momentum": [0.],
             #     "optimizer_parameters": { 
-            #                 "nesterov": True
             #                 },
-            #     "learning_rate": [0.1], 
+            #     "learning_rate":  [1.], 
             #     "learning_rate_decay": 1.0,
-            #     "milestones": []
+            #     "milestones": [],
+            #     "momentum":[None, 0.01],
+            #     }
+            # },
+            # {
+            # "name": "AccExtraGrad",
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate":  [0.05], 
+            #     "momentum":[10.,1., 0.1,0.01,0.001], # Not a true momentum term, expected to be smaller than 1/lr, that's all
             #     }
             # },
             {
@@ -47,11 +61,21 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [0.1],
-                "learning_rate_decay": 1.0,
-                "milestones": []
+                "learning_rate": [0.049], 
                 }
             },
+            # {
+            # "name": "DSGD",
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.9],
+            #     "optimizer_parameters": { 
+            #                 "nesterov": True
+            #                 },
+            #     "learning_rate": [0.1], 
+            #     }
+            # },
+            
             # {
             # "name": "FedProxyProx",
             # "parameters": {
@@ -59,110 +83,58 @@ default_config = {
             #     "momentum": [0.],
             #     "optimizer_parameters": { 
             #                 },
-            #     "learning_rate": [2.,1.],
+            #     "learning_rate":  [0.5], 
             #     "learning_rate_decay": 1.0,
             #     "milestones": []
             #     }
             # },
         ],
-        "nb_steps": 3000,
+        "nb_steps": 100,
     },
     "model": {
         "name": "logreg_mnist",
         "dataset_name": "mnist",
         "nb_labels": 10,
         "loss": "NLLLoss",
-        "weight_decay":[0.01], # [0.01, 0.001]
+        "weight_decay": [0.001],
     },
     "aggregator": [
         {
             "name": "TrMean",
             "parameters": {}
-        },
-        {
-            "name": "Huber",
-            "parameters": {}
-        },
-        {
-            "name": "CenteredClipping",
-            "parameters": {}
-        },
-        {
-            "name": "CAF",
-            "parameters": {}
-        },
-        {
-            "name": "Krum",
-            "parameters": {}
-        },
-        {
-            "name": "MultiKrum",
-            "parameters": {}
-        },
-        {
-            "name": "MDA",
-            "parameters": {}
-        },
-        {
-            "name": "GeometricMedian",
-            "parameters": {}
-        },
-        {
-            "name": "Median",
-            "parameters": {}
-        },
+        }
     ],
     "pre_aggregators": [
-        # {
-        #     "name": "NNM",
-        #     "parameters": {}
-        # },
-        # {
-        #     "name": "ClippedMixing",
-        #     "parameters": {}
-        # },
-        # {
-        #     "name": "Identity",
-        #     "parameters": {}
-        # },
+        {
+            "name": "NNM",
+            "parameters": {}
+        }
     ],
     "honest_clients": {
         "batch_size": 0 # full batch
     },
     "attack": [
+        # {
+        #     "name": "Optimal_InnerProductManipulation",
+        #     "parameters": {}
+        # },
+        # {
+        #     "name": "Optimal_ALittleIsEnough",
+        #     "parameters": {}
+        # },
         {
-            "name": "Optimal_InnerProductManipulation",
-            "parameters": {}
-        },
-        {
-            "name": "Optimal_ALittleIsEnough",
-            "parameters": {}
-        },
-        {
-            "name": "Gaussian",
-            "parameters": {}
-        },
-        {
-            "name": "Mimic",
-            "parameters": {}
-        },
-        {
-            "name": "InnerProductManipulation",
-            "parameters": {}
-        },
-        {
-            "name": "ALittleIsEnough",
+            "name": "NoAttack",
             "parameters": {}
         },
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 10,
+        "evaluation_delta": 100,
         "batch_size_evaluation": 2**6,
         "evaluate_on_test": True,
         "store_per_client_metrics": True,
         "store_models": False,
-        "data_folder": "/tmp",
-        "results_directory": "./results/mnist_comparison_att_def_heter",
+        "data_folder": "./data",
+        "results_directory": "./results/speed_test",
     }
 }
 
@@ -170,10 +142,10 @@ default_config = {
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(10)
+    run_benchmark(5)
 
     # with open('ref_config.json', 'w') as f:
     #     from ref_config import make_ref_config
-    #     ref_config = make_ref_config(default_config)
+    #     ref_config = make_ref_config(default_config, steps_multiplier=1.5)
     #     json.dump(ref_config, f, indent=4)
     # run_benchmark(10, config_name='ref_config.json')

@@ -10,8 +10,8 @@ import seaborn as sns
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset, inset_axes
 
 
-size=10
-size_legend=10
+size=12
+size_legend=12
 mpl.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -43,8 +43,10 @@ name_algorithms ={
 }
 name_attack ={
     "Optimal_InnerProductManipulation":"IPM",
-    "Optimal_ALittleIsEnougattackh":"ALIE",
+    "Optimal_ALittleIsEnough":"ALIE",
     "NoAttack":"No Attack",
+    "Gaussian":"Gaussian",
+    "LabelFlipping":"Label Flipping",
 }
 
 # from managers import ParamsManager
@@ -2253,12 +2255,13 @@ def paper_used_plots(path_to_results, path_to_plot, use_ref=False,
                 for agg in aggregators:
                     for dist_parameter in ensure_list(data_dist["distribution_parameter"]):
                         
-                        fig, axs = plt.subplots(1, len(attacks), figsize=(10, 5), sharex=False, sharey=True)
+                        factor_size = 0.7
+                        fig, axs = plt.subplots(1, len(attacks), figsize=(10*factor_size, 5*factor_size), sharex=False, sharey=True)
                         if isinstance(axs,mpl.axes.Axes):
                             axs=[axs]
                         
                         if zoom:
-                            axins = [inset_axes(ax, 5, 2, loc='upper center') for ax in axs]
+                            axins = [inset_axes(ax, 6*factor_size, 2.5*factor_size, loc='upper center') for ax in axs]
 
                         if metric == 'test_accuracy' or metric == 'train_accuracy':
                             nb_points = 1 + math.ceil(nb_steps / evaluation_delta)
@@ -2433,14 +2436,14 @@ def paper_used_plots(path_to_results, path_to_plot, use_ref=False,
                             if zoom:
                                 if metric in ['train_loss']:
                                     axins[attack_id].set_yscale('log')
-                                    axins[attack_id].set_xlim(0, 100)
+                                    axins[attack_id].set_xlim(0, 200)
                                     axins[attack_id].set_yticklabels([])
                                     axins[attack_id].tick_params(axis='x',labelsize=int(size*0.8))
 
-                                mark_inset(axs[attack_id], axins[attack_id], loc1=2,loc2=3, fc="none",ec='0.7')
+                                # mark_inset(axs[attack_id], axins[attack_id], loc1=1,loc2=4, fc="none",ec='0.7')
                             
                             axs[attack_id].set_xlabel(xlabel)
-                            axs[attack_id].set_title(name_attack[attack['name']])
+                            # axs[attack_id].set_title(name_attack[attack['name']])
                             nb_steps_lim = (nb_points-1) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1)
                             if nb_steps_displayed is not None:
                                 nb_steps_lim = nb_steps_displayed
@@ -2471,7 +2474,7 @@ def paper_used_plots(path_to_results, path_to_plot, use_ref=False,
 
 
 def paper_used_plots_with_ref(path_to_results, path_to_plot, metric='test_accuracy', nb_steps_displayed=None,
-                              path_to_results_ref=None, zoom=False):
+                              path_to_results_ref=None, zoom=False, plot_ref=True):
     """
     Plot comparison of different training algorithms with their different hyperparameters on the same plot for the specified metric.
     Adds reference curves on an additional plot to the right.
@@ -2582,9 +2585,11 @@ def paper_used_plots_with_ref(path_to_results, path_to_plot, metric='test_accura
                             ylim_upper = -np.inf
                             ylim_lower = np.inf
                             file_key = 'train_loss_tr_seed'
+                            ylim_lower_plot = 1 
 
                         # Create figure with reference curves subplot on the right
-                        fig, axs = plt.subplots(1, len(attacks) + 1, figsize=(16, 5), sharex=False, sharey=True)
+                        nb_plots=len(attacks) + plot_ref
+                        fig, axs = plt.subplots(1, nb_plots, figsize=(nb_plots*3, 3), sharex=False, sharey=True)
                         if isinstance(axs, mpl.axes.Axes):
                             axs = [axs]
                         
@@ -2753,8 +2758,9 @@ def paper_used_plots_with_ref(path_to_results, path_to_plot, metric='test_accura
 
                                         if metric in ['train_loss']:
                                             mean_data = mean_data - ylim_lower
+                                            ylim_lower_plot = min(ylim_lower_plot, np.min(mean_data)) if ylim_lower_plot is not None and np.min(mean_data) > 0 else np.min(mean_data)
                                         
-                                        label = f"{name_algorithms[training_algorithm]}" + f" lr={lr}"
+                                        label = f"{name_algorithms[training_algorithm]}"# + f" lr={lr}"
                                         
                                         axs[attack_id].plot(np.arange(nb_points) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1), 
                                                 mean_data, label=label, color=color_mapping[(training_algorithm, lr)], linestyle=linestyle_mapping[(training_algorithm, lr)], marker=None, alpha=0.8, markevery=nb_points*2)
@@ -2769,65 +2775,66 @@ def paper_used_plots_with_ref(path_to_results, path_to_plot, metric='test_accura
                             axs[attack_id].set_xlim(0, nb_steps_lim)
                             if metric in ['train_loss']:
                                 axs[attack_id].set_yscale('log')
+                                axs[attack_id].set_ylim(bottom=ylim_lower_plot * 0.8)
                             else:
                                 axs[attack_id].set_ylim(top=ylim_upper, bottom=ylim_lower)
-
-                        # Plot reference experiments on the rightmost subplot
-                        for training_algorithm_dic in training_algorithms_ref:
-                            training_algorithm_name = training_algorithm_dic['name']
-                            lrs_ref = ensure_list(training_algorithm_dic['parameters']['learning_rate'])
-                            
-                            for lr_ref in lrs_ref:
-                                momentum_ref = ensure_list(training_algorithm_dic['parameters'].get('momentum', 0.0))[0]
+                        if plot_ref:
+                            # Plot reference experiments on the rightmost subplot
+                            for training_algorithm_dic in training_algorithms_ref:
+                                training_algorithm_name = training_algorithm_dic['name']
+                                lrs_ref = ensure_list(training_algorithm_dic['parameters']['learning_rate'])
                                 
-                                file_ref_name = (
-                                    f"{dataset_name}_{model_name}_{training_algorithm_name}_n_{nb_honest_ref}_f_0_"
-                                    f"d_0_{custom_dict_to_str(data_dist['name'])}_"
-                                    f"{dist_parameter}_Average_"
-                                    f"_NoAttack_"
-                                    f"lr_{lr_ref}_mom_{momentum_ref}_wd_{wd}"
-                                )
-                                run, run_dd = 0, 0
-                                data_path_ref = os.path.join(
-                                    path_to_results_ref,
-                                    file_ref_name,
-                                    f"{file_key}_{run + training_seed}"
-                                    f"_dd_seed_{run_dd + data_distribution_seed}.txt"
-                                )
-                                
-                                try:
-                                    tab_data_ref = genfromtxt(data_path_ref, delimiter=',')
+                                for lr_ref in lrs_ref:
+                                    momentum_ref = ensure_list(training_algorithm_dic['parameters'].get('momentum', 0.0))[0]
                                     
-                                    # Ensure correct number of points
-                                    if len(tab_data_ref) < nb_points_ref:
-                                        tab_data_ref = np.pad(tab_data_ref, (0, nb_points_ref - len(tab_data_ref)), mode='edge')
-                                    elif len(tab_data_ref) > nb_points_ref:
-                                        tab_data_ref = tab_data_ref[:nb_points_ref]
+                                    file_ref_name = (
+                                        f"{dataset_name}_{model_name}_{training_algorithm_name}_n_{nb_honest_ref}_f_0_"
+                                        f"d_0_{custom_dict_to_str(data_dist['name'])}_"
+                                        f"{dist_parameter}_Average_"
+                                        f"_NoAttack_"
+                                        f"lr_{lr_ref}_mom_{momentum_ref}_wd_{wd}"
+                                    )
+                                    run, run_dd = 0, 0
+                                    data_path_ref = os.path.join(
+                                        path_to_results_ref,
+                                        file_ref_name,
+                                        f"{file_key}_{run + training_seed}"
+                                        f"_dd_seed_{run_dd + data_distribution_seed}.txt"
+                                    )
                                     
-                                    mean_data_ref = tab_data_ref
-                                    
-                                    if metric in ['train_loss']:
-                                        mean_data_ref = mean_data_ref - ylim_lower
-                                    
-                                    label = f"{name_algorithms.get(training_algorithm_name, training_algorithm_name)}" + f" lr={lr_ref}"
-                                    
-                                    axs[-1].plot(np.arange(nb_points_ref) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1),
-                                            mean_data_ref, label=label, color=color_mapping[(training_algorithm_name, lr_ref)], linestyle=linestyle_mapping[(training_algorithm_name, lr_ref)], marker=None, alpha=0.8, markevery=nb_points_ref*2)
-                                    
-                                except Exception as e:
-                                    print(f"Warning: Could not load reference data from {data_path_ref}: {e}")
+                                    try:
+                                        tab_data_ref = genfromtxt(data_path_ref, delimiter=',')
+                                        
+                                        # Ensure correct number of points
+                                        if len(tab_data_ref) < nb_points_ref:
+                                            tab_data_ref = np.pad(tab_data_ref, (0, nb_points_ref - len(tab_data_ref)), mode='edge')
+                                        elif len(tab_data_ref) > nb_points_ref:
+                                            tab_data_ref = tab_data_ref[:nb_points_ref]
+                                        
+                                        mean_data_ref = tab_data_ref
+                                        
+                                        if metric in ['train_loss']:
+                                            mean_data_ref = mean_data_ref - ylim_lower
+                                        
+                                        label = f"{name_algorithms.get(training_algorithm_name, training_algorithm_name)}" + f" lr={lr_ref}"
+                                        
+                                        axs[-1].plot(np.arange(nb_points_ref) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1),
+                                                mean_data_ref, label=label, color=color_mapping[(training_algorithm_name, lr_ref)], linestyle=linestyle_mapping[(training_algorithm_name, lr_ref)], marker=None, alpha=0.8, markevery=nb_points_ref*2)
+                                        
+                                    except Exception as e:
+                                        print(f"Warning: Could not load reference data from {data_path_ref}: {e}")
 
-                        axs[-1].set_xlabel(xlabel)
-                        axs[-1].set_title("Without Byzantine")
-                        nb_steps_lim_ref =nb_steps_lim # (nb_points_ref - 1) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1)
-                        if nb_steps_displayed is not None:
-                            nb_steps_lim_ref = nb_steps_displayed
-                        axs[-1].set_xlim(0, nb_steps_lim_ref)
-                        if metric in ['train_loss']:
-                            axs[-1].set_yscale('log')
-                            axs[-1].set_ylim(bottom=1e-3)
-                        else:
-                            axs[-1].set_ylim(top=ylim_upper, bottom=ylim_lower)
+                            axs[-1].set_xlabel(xlabel)
+                            axs[-1].set_title("Without Byzantine")
+                            nb_steps_lim_ref =nb_steps_lim # (nb_points_ref - 1) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1)
+                            if nb_steps_displayed is not None:
+                                nb_steps_lim_ref = nb_steps_displayed
+                            axs[-1].set_xlim(0, nb_steps_lim_ref)
+                            if metric in ['train_loss']:
+                                axs[-1].set_yscale('log')
+                                # axs[-1].set_ylim(bottom=1e-5)
+                            else:
+                                axs[-1].set_ylim(top=ylim_upper, bottom=ylim_lower)
 
                         axs[0].set_ylabel(ylabel, rotation=90, size="large")
 
@@ -2851,6 +2858,341 @@ def paper_used_plots_with_ref(path_to_results, path_to_plot, metric='test_accura
                             f"{dataset_name}_{model_name}_n_{nb_nodes}_f_{nb_byzantine}_"
                             f"{custom_dict_to_str(data_dist['name'])}_{dist_parameter}_wd_{wd}_"
                             f"{custom_dict_to_str(agg['name'])}_{pre_agg_names}_comparison_with_ref"
+                        )
+                        
+                        fig.savefig(path_to_plot + "/" + plot_name + '_' + metric + '.pdf', bbox_inches='tight')
+
+
+
+def paper_used_plots_with_ref_aggregation_comparison(path_to_results, path_to_plot, metric='test_accuracy', nb_steps_displayed=None,
+                              path_to_results_ref=None, zoom=False):
+    """
+    Plot comparison of different training algorithms with their different hyperparameters on the same plot for the specified metric.
+    Adds reference curves for y-limit computation but does not display them.
+    Each figure shows different aggregation rules as subplots, with one figure per attack type.
+    Handles different number of steps between main and reference experiments.
+    """
+    
+    if metric not in ['test_accuracy', 'train_accuracy', 'train_loss']:
+        raise ValueError("metric must be 'test_accuracy', 'train_accuracy', or 'train_loss'")
+    
+    try:
+        with open(os.path.join(path_to_results, 'config.json'), 'r') as file:
+            data = json.load(file)
+    except Exception as e:
+        print(f"ERROR reading config.json: {e}")
+        return
+    
+    try:
+        os.makedirs(path_to_plot, exist_ok=True)
+    except OSError as error:
+        print(f"Error creating directory: {error}")
+
+    if path_to_results_ref is None:
+        path_to_results_ref = path_to_results
+    
+    try:
+        with open(os.path.join(path_to_results_ref, 'ref_config.json'), 'r') as file:
+            ref_config = json.load(file)
+    except Exception as e:
+        print(f"ERROR reading ref_config.json: {e}")
+        return
+
+    # <-------------- Benchmark Config ------------->
+    training_seed = data["benchmark_config"]["training_seed"]
+    nb_training_seeds = data["benchmark_config"]["nb_training_seeds"]
+    nb_honest_clients = data["benchmark_config"]["nb_honest_clients"]
+    nb_byz = data["benchmark_config"]["f"]
+    nb_declared = data["benchmark_config"].get("tolerated_f", None)
+    data_distribution_seed = data["benchmark_config"]["data_distribution_seed"]
+    nb_data_distribution_seeds = data["benchmark_config"]["nb_data_distribution_seeds"]
+    data_distributions = data["benchmark_config"]["data_distribution"]
+    set_honest_clients_as_clients = data["benchmark_config"]["set_honest_clients_as_clients"]
+    nb_steps = data["benchmark_config"]["nb_steps"]
+    
+    # <-------------- Evaluation and Results ------------->
+    evaluation_delta = data["evaluation_and_results"]["evaluation_delta"]
+    
+    # <-------------- Model Config ------------->
+    model_name = data["model"]["name"]
+    dataset_name = data["model"]["dataset_name"]
+    wd_list = data["model"]["weight_decay"]
+    
+    #<-------------- Training Algorithm Config ------------->
+    training_algorithms = data["benchmark_config"]["training_algorithm"]
+    
+    # <-------------- Aggregators Config ------------->
+    aggregators = data["aggregator"]
+    pre_aggregators = data["pre_aggregators"]
+    
+    # <-------------- Attacks Config ------------->
+    attacks = data["attack"]
+    
+    # Ensure certain configurations are always lists
+    training_algorithms = ensure_list(training_algorithms)
+    nb_honest_clients = ensure_list(nb_honest_clients)
+    nb_byz = ensure_list(nb_byz)
+    nb_declared = ensure_list(nb_declared)
+    data_distributions = ensure_list(data_distributions)
+    aggregators = ensure_list(aggregators)
+    
+    # Pre-aggregators can be multiple or single dict; unify them
+    if not pre_aggregators or isinstance(pre_aggregators[0], dict):
+        pre_aggregators = [pre_aggregators]
+    
+    attacks = ensure_list(attacks)
+    wd_list = ensure_list(wd_list)
+    
+    # Get reference config info
+    training_algorithms_ref = ensure_list(ref_config["benchmark_config"]['training_algorithm'])
+    nb_honest_ref = ensure_list(ref_config['benchmark_config']['nb_honest_clients'])[0]
+    nb_steps_ref = ref_config['benchmark_config']['nb_steps']
+    
+    # Assume single values for simplicity, for the following parameters
+    nb_honest = nb_honest_clients[0]
+
+    pre_agg = pre_aggregators[0]
+    pre_agg_list_names = [one_pre_agg['name'] for one_pre_agg in pre_agg]
+    pre_agg_names = "_".join(pre_agg_list_names)
+
+    for nb_byzantine in nb_byz:
+        for wd in wd_list:
+            for data_dist in data_distributions:
+                for dist_parameter in ensure_list(data_dist["distribution_parameter"]):
+                    for attack in attacks:
+                        
+                        if metric == 'test_accuracy' or metric == 'train_accuracy':
+                            nb_points = 1 + math.ceil(nb_steps / evaluation_delta)
+                            nb_points_ref = 1 + math.ceil(nb_steps_ref / evaluation_delta)
+                            xlabel = 'Communication Rounds'
+                            ylabel = 'Accuracy'
+                            ylim_upper = 0.94
+                            ylim_lower = 0.85
+                            file_key = 'test_accuracy_tr_seed' if metric == 'test_accuracy' else 'val_accuracy_tr_seed'
+                        else:
+                            nb_points = nb_steps
+                            nb_points_ref = nb_steps_ref
+                            xlabel = 'Communication Rounds'
+                            ylabel = 'Train Loss'
+                            ylim_upper = -np.inf
+                            ylim_lower = np.inf
+                            file_key = 'train_loss_tr_seed'
+                            ylim_lower_plot = 1 
+
+                        # Create figure with aggregation rules as subplots (not reference subplot)
+                        nb_plots = len(aggregators)
+                        fig, axs = plt.subplots(1, nb_plots, figsize=(nb_plots*3, 3), sharex=False, sharey=True)
+                        if isinstance(axs, mpl.axes.Axes):
+                            axs = [axs]
+                        
+                        # First determine y-limits from main experiments AND reference experiments
+                        for training_algorithm_dic in training_algorithms:
+                            training_algorithm = training_algorithm_dic["name"]
+                            training_algorithm_params = training_algorithm_dic.get("parameters", {})
+                            
+                            lr_list = ensure_list(training_algorithm_params.get("learning_rate", [0.01]))
+                            momentum_list = ensure_list(training_algorithm_params.get("momentum", [0.0]))
+                            
+                            for lr in lr_list:
+                                for momentum in momentum_list:
+                                    for agg in aggregators:
+                                        nb_decl = nb_declared[0] if nb_declared[0] is not None else nb_byzantine
+                                        
+                                        if set_honest_clients_as_clients:
+                                            nb_nodes = nb_honest
+                                        else:
+                                            nb_nodes = nb_honest + nb_byzantine
+                                        
+                                        tab_data = np.zeros((
+                                            nb_data_distribution_seeds,
+                                            nb_training_seeds,
+                                            nb_points
+                                        ))
+                                        
+                                        for run_dd in range(nb_data_distribution_seeds):
+                                            for run in range(nb_training_seeds):
+                                                file_name = (
+                                                    f"{dataset_name}_{model_name}_{training_algorithm}_n_{nb_nodes}_f_{nb_byzantine}_"
+                                                    f"d_{nb_decl}_{custom_dict_to_str(data_dist['name'])}_"
+                                                    f"{dist_parameter}_{custom_dict_to_str(agg['name'])}_"
+                                                    f"{pre_agg_names}_{custom_dict_to_str(attack['name'])}_"
+                                                    f"lr_{lr}_mom_{momentum}_wd_{wd}"
+                                                )
+                                                data_path = os.path.join(
+                                                    path_to_results,
+                                                    file_name,
+                                                    f"{file_key}_{run + training_seed}"
+                                                    f"_dd_seed_{run_dd + data_distribution_seed}.txt"
+                                                )
+                                                tab_data[run_dd, run] = genfromtxt(data_path, delimiter=',')
+                                        
+                                        tab_data = tab_data.reshape(
+                                            nb_data_distribution_seeds * nb_training_seeds,
+                                            nb_points
+                                        )
+                                        
+                                        mean_data = np.mean(tab_data, axis=0)
+                                        
+                                        if metric == "train_loss":
+                                            ylim_lower = np.min([np.min(mean_data), ylim_lower])
+                                            ylim_upper = np.max([mean_data[0] * 1.1, ylim_upper])
+                        
+                        # Also compute y-limits from reference experiments (but don't plot them)
+                        if metric == "train_loss":
+                            for training_algorithm_dic in training_algorithms_ref:
+                                training_algorithm_name = training_algorithm_dic['name']
+                                lrs_ref = ensure_list(training_algorithm_dic['parameters']['learning_rate'])
+                                
+                                for lr_ref in lrs_ref:
+                                    momentum_ref = ensure_list(training_algorithm_dic['parameters'].get('momentum', 0.0))[0]
+                                    
+                                    file_ref_name = (
+                                        f"{dataset_name}_{model_name}_{training_algorithm_name}_n_{nb_honest_ref}_f_0_"
+                                        f"d_0_{custom_dict_to_str(data_dist['name'])}_"
+                                        f"{dist_parameter}_Average_"
+                                        f"_NoAttack_"
+                                        f"lr_{lr_ref}_mom_{momentum_ref}_wd_{wd}"
+                                    )
+                                    run, run_dd = 0, 0
+                                    data_path_ref = os.path.join(
+                                        path_to_results_ref,
+                                        file_ref_name,
+                                        f"{file_key}_{run + training_seed}"
+                                        f"_dd_seed_{run_dd + data_distribution_seed}.txt"
+                                    )
+                                    
+                                    try:
+                                        tab_data_ref = genfromtxt(data_path_ref, delimiter=',')
+                                        if len(tab_data_ref) > 0:
+                                            ylim_lower = np.min([np.min(tab_data_ref), ylim_lower])
+                                            ylim_upper = np.max([tab_data_ref[0] * 1.1, ylim_upper])
+                                    except Exception:
+                                        pass
+
+                        # Build color and linestyle mapping for consistent colors and styles across subfigures
+                        color_mapping = {}
+                        linestyle_mapping = {}
+                        color_index = 0
+                        for training_algorithm_dic in training_algorithms:
+                            training_algorithm = training_algorithm_dic["name"]
+                            training_algorithm_params = training_algorithm_dic.get("parameters", {})
+                            
+                            lr_list = ensure_list(training_algorithm_params.get("learning_rate", [0.01]))
+                            
+                            for lr in lr_list:
+                                key = (training_algorithm, lr)
+                                color_mapping[key] = colors[color_index % len(colors)]
+                                linestyle_mapping[key] = tab_sign[color_index % len(tab_sign)]
+                                color_index += 1
+                        
+                        # Also add reference algorithms to the mapping
+                        for training_algorithm_dic in training_algorithms_ref:
+                            training_algorithm_name = training_algorithm_dic['name']
+                            lrs_ref = ensure_list(training_algorithm_dic['parameters']['learning_rate'])
+                            
+                            for lr_ref in lrs_ref:
+                                key = (training_algorithm_name, lr_ref)
+                                if key not in color_mapping:
+                                    color_mapping[key] = colors[color_index % len(colors)]
+                                    linestyle_mapping[key] = tab_sign[color_index % len(tab_sign)]
+                                    color_index += 1
+
+                        # Plot main experiments on subplots (one per aggregation rule)
+                        for agg_id, agg in enumerate(aggregators):
+                            nb_decl = nb_declared[0] if nb_declared[0] is not None else nb_byzantine
+                            
+                            if set_honest_clients_as_clients:
+                                nb_nodes = nb_honest
+                            else:
+                                nb_nodes = nb_honest + nb_byzantine
+
+                            for training_algorithm_dic in training_algorithms:
+                                training_algorithm = training_algorithm_dic["name"]
+                                training_algorithm_params = training_algorithm_dic.get("parameters", {})
+                                
+                                lr_list = ensure_list(training_algorithm_params.get("learning_rate", [0.01]))
+                                momentum_list = ensure_list(training_algorithm_params.get("momentum", [0.0]))
+                                
+                                for lr in lr_list:
+                                    for momentum in momentum_list:
+                                        
+                                        tab_data = np.zeros((
+                                            nb_data_distribution_seeds,
+                                            nb_training_seeds,
+                                            nb_points
+                                        ))
+                                        
+                                        for run_dd in range(nb_data_distribution_seeds):
+                                            for run in range(nb_training_seeds):
+                                                file_name = (
+                                                    f"{dataset_name}_{model_name}_{training_algorithm}_n_{nb_nodes}_f_{nb_byzantine}_"
+                                                    f"d_{nb_decl}_{custom_dict_to_str(data_dist['name'])}_"
+                                                    f"{dist_parameter}_{custom_dict_to_str(agg['name'])}_"
+                                                    f"{pre_agg_names}_{custom_dict_to_str(attack['name'])}_"
+                                                    f"lr_{lr}_mom_{momentum}_wd_{wd}"
+                                                )
+                                                data_path = os.path.join(
+                                                    path_to_results,
+                                                    file_name,
+                                                    f"{file_key}_{run + training_seed}"
+                                                    f"_dd_seed_{run_dd + data_distribution_seed}.txt"
+                                                )
+                                                tab_data[run_dd, run] = genfromtxt(data_path, delimiter=',')
+                                        
+                                        tab_data = tab_data.reshape(
+                                            nb_data_distribution_seeds * nb_training_seeds,
+                                            nb_points
+                                        )
+                                        
+                                        err = (1.96 * np.std(tab_data, axis=0)) / math.sqrt(nb_training_seeds * nb_data_distribution_seeds)
+                                        
+                                        mean_data = np.mean(tab_data, axis=0)
+
+                                        if metric in ['train_loss']:
+                                            mean_data = mean_data - ylim_lower
+                                            ylim_lower_plot = min(ylim_lower_plot, np.min(mean_data)) if ylim_lower_plot is not None and np.min(mean_data) > 0 else np.min(mean_data)
+                                        
+                                        label = f"{name_algorithms[training_algorithm]}"# + f" lr={lr}"
+                                        
+                                        axs[agg_id].plot(np.arange(nb_points) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1), 
+                                                mean_data, label=label, color=color_mapping[(training_algorithm, lr)], linestyle=linestyle_mapping[(training_algorithm, lr)], marker=None, alpha=0.8, markevery=nb_points*2)
+                                        axs[agg_id].fill_between(np.arange(nb_points) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1), 
+                                                        mean_data - err, mean_data + err, alpha=0.25)
+
+                            axs[agg_id].set_xlabel(xlabel)
+                            axs[agg_id].set_title(custom_dict_to_str(agg['name']))
+                            nb_steps_lim = (nb_points - 1) * (evaluation_delta if metric in ['test_accuracy', 'train_accuracy'] else 1)
+                            if nb_steps_displayed is not None:
+                                nb_steps_lim = nb_steps_displayed
+                            axs[agg_id].set_xlim(0, nb_steps_lim)
+                            if metric in ['train_loss']:
+                                axs[agg_id].set_yscale('log')
+                                axs[agg_id].set_ylim(bottom=ylim_lower_plot * 0.8)
+                            else:
+                                axs[agg_id].set_ylim(top=ylim_upper, bottom=ylim_lower)
+
+                        axs[0].set_ylabel(ylabel, rotation=90, size="large")
+
+                        # Collect all unique handles and labels from all subplots
+                        all_handles = []
+                        all_labels = []
+                        seen_labels = set()
+                        
+                        for ax in axs:
+                            handles, labels = ax.get_legend_handles_labels()
+                            for handle, label in zip(handles, labels):
+                                if label not in seen_labels:
+                                    all_handles.append(handle)
+                                    all_labels.append(label)
+                                    seen_labels.add(label)
+                        
+                        fig.legend(all_handles, all_labels, loc='upper center', bbox_to_anchor=(0.52, 0.05), ncol=5, labelspacing=0.1, handletextpad=0.1, borderaxespad=0)
+                        fig.tight_layout(w_pad=0.2)
+                        
+                        plot_name = (
+                            f"{dataset_name}_{model_name}_n_{nb_nodes}_f_{nb_byzantine}_"
+                            f"{custom_dict_to_str(data_dist['name'])}_{dist_parameter}_wd_{wd}_"
+                            f"{custom_dict_to_str(attack['name'])}_{pre_agg_names}_aggregation_comparison"
                         )
                         
                         fig.savefig(path_to_plot + "/" + plot_name + '_' + metric + '.pdf', bbox_inches='tight')
