@@ -15,14 +15,14 @@ default_config = {
         "training_seed": 0,
         "nb_training_seeds": 1,
         "nb_honest_clients": 40,
-        "f": [1],#,[0,1,5],#,1],
+        "f": [0],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1,
         "data_distribution": [
             {
                 "name": "dirichlet_niid",
-                "distribution_parameter": [5.],#[1.,5.],
+                "distribution_parameter": [1.,5.],#[1.,5.],
             },
         ],
         "training_algorithm": [
