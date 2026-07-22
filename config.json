@@ -4,9 +4,9 @@
         "device": "cuda",
         "training_seed": 0,
         "nb_training_seeds": 1,
-        "nb_honest_clients": 20,
+        "nb_honest_clients": 40,
         "f": [
-            1
+            0
         ],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
@@ -29,66 +29,16 @@
                     ],
                     "optimizer_parameters": {},
                     "learning_rate": [
+                        10.0,
+                        1.0,
+                        0.5,
                         0.1
                     ],
                     "milestones": []
                 }
-            },
-            {
-                "name": "FedProxyProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.0
-                    ],
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        1.0
-                    ],
-                    "prox_optimizaer_name": "SGD",
-                    "prox_optimizer_params": {
-                        "learning_rate": 0.05,
-                        "security_factor": 10
-                    }
-                }
-            },
-            {
-                "name": "AccExtraGradProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        0.2
-                    ],
-                    "momentum": [
-                        0.005
-                    ],
-                    "tau_factor": 1,
-                    "fast_lr_factor": 1,
-                    "prox_optimizaer_name": "SGD",
-                    "prox_optimizer_params": {
-                        "learning_rate": 0.05,
-                        "security_factor": 10
-                    }
-                }
-            },
-            {
-                "name": "AccExtraGrad",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        0.05
-                    ],
-                    "momentum": [
-                        0.01
-                    ],
-                    "tau_factor": 1,
-                    "fast_lr_factor": 1.0
-                }
             }
         ],
-        "nb_steps": 2000
+        "nb_steps": 100
     },
     "model": {
         "name": "cnn_cifar",
@@ -127,7 +77,7 @@
         "store_models": false,
         "cache_test": true,
         "cache_train": true,
-        "data_folder": "/tmp",
+        "data_folder": "./data",
         "results_directory": "./results/cifar10"
     }
 }

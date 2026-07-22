@@ -132,13 +132,13 @@ default_config = {
         "store_models": False,
         "cache_test": True, # to speed up evaluation
         "cache_train": True, # to speed up test
-        "data_folder": "/tmp", #"./data",
+        "data_folder":  "./data",# /tmp
         "results_directory": "./results/cifar10",
-    }
+        }
 }
 
 
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(2)
+    run_benchmark(1)
