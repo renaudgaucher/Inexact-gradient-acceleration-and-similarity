@@ -111,10 +111,10 @@ default_config = {
             "name": "Optimal_InnerProductManipulation",
             "parameters": {}
         },
-        {
-            "name": "Optimal_ALittleIsEnough",
-            "parameters": {}
-        },
+        #{
+        #    "name": "Optimal_ALittleIsEnough",
+        #    "parameters": {}
+        #},
         # {
         #     "name": "Gaussian",
         #     "parameters": {}
@@ -141,4 +141,4 @@ default_config = {
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(1)
+    run_benchmark(3)
