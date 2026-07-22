@@ -35,23 +35,23 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [5.,2.,1.,0.5,0.1], #[0.5, 0.1], # tuned for cifar10
+                "learning_rate": [1.], #[0.5, 0.1], # tuned for cifar10
                 "milestones": []
                 }
             },
-            # {
-            # "name": "AccExtraGrad",
-            # "parameters": {
-            #     "optimizer_name": "SGD",
-            #     "optimizer_parameters": {
-            #                 },
-            #     "learning_rate":  [0.05], 
-            #     "momentum":[0.01], # Not a true momentum term: corresponds to 'gamma', which in theory,
-            #     # corresponds to the strong convexity. Should always be smaller than 1/lr.
-            #     # "tau_factor": 1, (multiplies the tau - i.e. the averaging factor)
-            #     # "fast_lr_factor": 1., (multiplies the large step size)
-            #     }
-            # },
+            {
+             "name": "AccExtraGrad",
+             "parameters": {
+                 "optimizer_name": "SGD",
+                 "optimizer_parameters": {
+                             },
+                 "learning_rate":  [1.,0.5,0.1], 
+                 "momentum":[0.01], # Not a true momentum term: corresponds to 'gamma', which in theory,
+                 # corresponds to the strong convexity. Should always be smaller than 1/lr.
+                 # "tau_factor": 1, (multiplies the tau - i.e. the averaging factor)
+                 # "fast_lr_factor": 1., (multiplies the large step size)
+                 }
+             },
             # {
             # "name": "FedProxyProx",
             # "parameters": {
@@ -141,4 +141,4 @@ default_config = {
 if __name__ == "__main__":
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
-    run_benchmark(3)
+    run_benchmark(2)
