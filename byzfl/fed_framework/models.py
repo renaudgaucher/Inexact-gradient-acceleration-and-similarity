@@ -52,6 +52,12 @@ Available Models
    - **Input Shape**: `3 x 32 x 32`.
    - **Output Classes**: 10.
 
+4. **'smallcnn_cifar'**
+    - **Type**: Convolutional neural network.
+    - **Description**: A small convolutional neural network for CIFAR datasets, designed to be efficient and effective.
+    - **Input Shape**: `3 x 32 x 32`.
+    - **Output Classes**: 10.
+
 ### ResNet Models
 
 ResNet models are general-purpose convolutional neural networks capable of handling datasets like CIFAR-10 and CIFAR-100.

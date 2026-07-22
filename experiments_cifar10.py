@@ -29,40 +29,57 @@ default_config = {
         ],
         "training_algorithm": [ 
             {
-            "name": "DSGD", ### This is NAG
+            "name": "moDSGD", # This is SGD
             "parameters": {
                 "optimizer_name": "SGD",
-                "momentum": [0.9],# tuned for cifar10
+                "momentum": [0.],
                 "optimizer_parameters": { 
-                            "nesterov": True
                             },
-                "learning_rate": [0.05], # tuned for cifar
-                "learning_rate_decay": 1.0,
+                "learning_rate": [0.1],#[0.5, 0.1], # tuned for cifar10
                 "milestones": []
                 }
             },
-            # {
-            # "name": "moDSGD", # This is SGD
-            # "parameters": {
-            #     "optimizer_name": "SGD",
-            #     "momentum": [0.],
-            #     "optimizer_parameters": { 
-            #                 },
-            #     "learning_rate": [0.5, 0.1], # tuned for cifar10
-            #     "milestones": []
-            #     }
-            # },
-            # {
-            # "name": "FedProxyProx", # This is ProxyProx
-            # "parameters": {
-            #     "optimizer_name": "SGD",
-            #     "momentum": [0.],
-            #     "optimizer_parameters": {},
-            #     "learning_rate": [1.], # tuned for cifar10 beta=5.
-            #     "learning_rate_decay": 1.0,
-            #     "milestones": []
-            #     }
-            # },
+            {
+            "name": "FedProxyProx",
+            "parameters": {
+                "optimizer_name": "SGD",
+                "momentum": [0.],
+                "optimizer_parameters": { 
+                            },
+                "learning_rate":  [1.], #10.,
+                "prox_optimizaer_name": "SGD",
+                "prox_optimizer_params": {"learning_rate" : 0.05,
+                                          "security_factor" : 10},
+                
+                }
+            },
+            {
+            "name": "AccExtraGradProx",
+            "parameters": {
+                "optimizer_name": "SGD",
+                "optimizer_parameters": { 
+                            },
+                "learning_rate":  [0.2],#[0.5,0.2], #5.,1. not converging
+                "momentum":[0.005],
+                "tau_factor": 1,
+                "fast_lr_factor": 1, 
+                "prox_optimizaer_name": "SGD",
+                "prox_optimizer_params": {"learning_rate" : 0.05,
+                                          "security_factor" : 10},
+                }
+            },
+            {
+            "name": "AccExtraGrad",
+            "parameters": {
+                "optimizer_name": "SGD",
+                "optimizer_parameters": {
+                            },
+                "learning_rate":  [0.05], 
+                "momentum":[0.01], # Not a true momentum term, expected to be smaller than 1/lr, that's all
+                "tau_factor": 1,
+                "fast_lr_factor": 1., 
+                }
+            },
         ],
         "nb_steps": 2000,
     },
@@ -75,15 +92,15 @@ default_config = {
     },
     "aggregator": [
         {
-            "name": "TrMean",
+            "name": "Huber",
             "parameters": {}
         }
     ],
     "pre_aggregators": [
-        {
-            "name": "NNM",
-            "parameters": {}
-        }
+        # {
+        #     "name": "NNM",
+        #     "parameters": {}
+        # }
     ],
     "honest_clients": {
         "batch_size": 0 # full batch is 0, smaller batch size for easier configuration is good atm
@@ -107,15 +124,15 @@ default_config = {
         # },
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 25,
-        "batch_size_evaluation": 2**9, # to increase for more accuracy
+        "evaluation_delta": 100,
+        "batch_size_evaluation": 2**8, # to increase for more accuracy
         "evaluate_on_test": True,
         "store_per_client_metrics": True,
         "store_models": False,
         "cache_test": True, # to speed up evaluation
         "cache_train": True, # to speed up test
         "data_folder": "/tmp", #"./data",
-        "results_directory": "./results/mnist_cifar10_8",
+        "results_directory": "./results/cifar10",
     }
 }
 

@@ -1,43 +1,25 @@
 {
     "benchmark_config": {
-        "dtype": "float64",
-        "device": "cpu",
+        "dtype": "64",
+        "device": "cuda",
         "training_seed": 0,
         "nb_training_seeds": 1,
         "nb_honest_clients": 20,
         "f": [
-            1,
-            5
+            1
         ],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1,
         "data_distribution": [
             {
-                "name": "iid",
+                "name": "dirichlet_niid",
                 "distribution_parameter": [
-                    null
+                    5.0
                 ]
             }
         ],
         "training_algorithm": [
-            {
-                "name": "DSGD",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.9
-                    ],
-                    "optimizer_parameters": {
-                        "nesterov": true
-                    },
-                    "learning_rate": [
-                        0.1
-                    ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
-                }
-            },
             {
                 "name": "moDSGD",
                 "parameters": {
@@ -49,7 +31,6 @@
                     "learning_rate": [
                         0.1
                     ],
-                    "learning_rate_decay": 1.0,
                     "milestones": []
                 }
             },
@@ -62,41 +43,69 @@
                     ],
                     "optimizer_parameters": {},
                     "learning_rate": [
-                        32.0,
-                        16.0,
-                        8.0,
-                        4.0,
-                        2.0,
                         1.0
                     ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
+                    "prox_optimizaer_name": "SGD",
+                    "prox_optimizer_params": {
+                        "learning_rate": 0.05,
+                        "security_factor": 10
+                    }
+                }
+            },
+            {
+                "name": "AccExtraGradProx",
+                "parameters": {
+                    "optimizer_name": "SGD",
+                    "optimizer_parameters": {},
+                    "learning_rate": [
+                        0.2
+                    ],
+                    "momentum": [
+                        0.005
+                    ],
+                    "tau_factor": 1,
+                    "fast_lr_factor": 1,
+                    "prox_optimizaer_name": "SGD",
+                    "prox_optimizer_params": {
+                        "learning_rate": 0.05,
+                        "security_factor": 10
+                    }
+                }
+            },
+            {
+                "name": "AccExtraGrad",
+                "parameters": {
+                    "optimizer_name": "SGD",
+                    "optimizer_parameters": {},
+                    "learning_rate": [
+                        0.05
+                    ],
+                    "momentum": [
+                        0.01
+                    ],
+                    "tau_factor": 1,
+                    "fast_lr_factor": 1.0
                 }
             }
         ],
-        "nb_steps": 500
+        "nb_steps": 2000
     },
     "model": {
-        "name": "logreg_mnist",
-        "dataset_name": "mnist",
+        "name": "cnn_cifar",
+        "dataset_name": "cifar10",
         "nb_labels": 10,
         "loss": "NLLLoss",
         "weight_decay": [
-            0.001
+            0.01
         ]
     },
     "aggregator": [
         {
-            "name": "TrMean",
+            "name": "Huber",
             "parameters": {}
         }
     ],
-    "pre_aggregators": [
-        {
-            "name": "NNM",
-            "parameters": {}
-        }
-    ],
+    "pre_aggregators": [],
     "honest_clients": {
         "batch_size": 0
     },
@@ -111,12 +120,14 @@
         }
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 2,
-        "batch_size_evaluation": 64,
+        "evaluation_delta": 100,
+        "batch_size_evaluation": 256,
         "evaluate_on_test": true,
         "store_per_client_metrics": true,
         "store_models": false,
-        "data_folder": "./data",
-        "results_directory": "./results/mnist_logreg_iid_2"
+        "cache_test": true,
+        "cache_train": true,
+        "data_folder": "/tmp",
+        "results_directory": "./results/cifar10"
     }
 }
