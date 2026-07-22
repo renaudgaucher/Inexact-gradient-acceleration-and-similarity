@@ -1,12 +1,12 @@
 {
     "benchmark_config": {
-        "dtype": "64",
+        "dtype": "float64",
         "device": "cuda",
         "training_seed": 0,
         "nb_training_seeds": 1,
-        "nb_honest_clients": 40,
+        "nb_honest_clients": 20,
         "f": [
-            0
+            2
         ],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
@@ -15,7 +15,7 @@
             {
                 "name": "dirichlet_niid",
                 "distribution_parameter": [
-                    5.0
+                    1.0
                 ]
             }
         ],
@@ -29,13 +29,9 @@
                     ],
                     "optimizer_parameters": {},
                     "learning_rate": [
-                        10.0,
-                        5.0,
-                        2.0,
-                        1.0,
-                        0.5,
                         0.1
                     ],
+                    "learning_rate_decay": 1.0,
                     "milestones": []
                 }
             }
@@ -44,8 +40,8 @@
         "set_honest_clients_as_clients": false
     },
     "model": {
-        "name": "cnn_cifar",
-        "dataset_name": "cifar10",
+        "name": "logreg_mnist",
+        "dataset_name": "mnist",
         "nb_labels": 10,
         "loss": "NLLLoss",
         "weight_decay": [
@@ -69,14 +65,12 @@
         }
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 100,
-        "batch_size_evaluation": 256,
+        "evaluation_delta": 10,
+        "batch_size_evaluation": 64,
         "evaluate_on_test": true,
         "store_per_client_metrics": true,
         "store_models": false,
-        "cache_test": true,
-        "cache_train": true,
-        "data_folder": "./data",
-        "results_directory": "./results/cifar10"
+        "data_folder": "/tmp",
+        "results_directory": "./results/mnist_comparison_att_def"
     }
 }

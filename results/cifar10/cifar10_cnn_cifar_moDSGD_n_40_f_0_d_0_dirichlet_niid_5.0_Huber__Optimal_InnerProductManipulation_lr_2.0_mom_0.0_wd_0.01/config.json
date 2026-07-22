@@ -1,0 +1,66 @@
+{
+    "benchmark_config": {
+        "device": "cuda",
+        "training_seed": 0,
+        "nb_training_seeds": 1,
+        "nb_workers": 40,
+        "nb_honest_clients": 40,
+        "f": 0,
+        "tolerated_f": 0,
+        "set_honest_clients_as_clients": false,
+        "size_train_set": 0.8,
+        "data_distribution_seed": 0,
+        "nb_data_distribution_seeds": 1,
+        "data_distribution": {
+            "name": "dirichlet_niid",
+            "distribution_parameter": 5.0
+        },
+        "training_algorithm": {
+            "name": "moDSGD",
+            "parameters": {
+                "optimizer_name": "SGD",
+                "momentum": 0.0,
+                "optimizer_parameters": {},
+                "learning_rate": 2.0,
+                "milestones": []
+            }
+        },
+        "nb_steps": 100
+    },
+    "model": {
+        "name": "cnn_cifar",
+        "dataset_name": "cifar10",
+        "nb_labels": 10,
+        "loss": "NLLLoss",
+        "weight_decay": 0.01,
+        "learning_rate": 2.0,
+        "learning_rate_decay": 1.0,
+        "milestones": []
+    },
+    "aggregator": {
+        "name": "Huber",
+        "parameters": {
+            "f": 0
+        }
+    },
+    "pre_aggregators": [],
+    "honest_clients": {
+        "momentum": 0.0,
+        "batch_size": 0
+    },
+    "attack": {
+        "name": "Optimal_InnerProductManipulation",
+        "parameters": {}
+    },
+    "evaluation_and_results": {
+        "evaluation_delta": 100,
+        "batch_size_evaluation": 256,
+        "evaluate_on_test": true,
+        "store_per_client_metrics": true,
+        "store_models": false,
+        "data_folder": "./data",
+        "results_directory": "./results/cifar10",
+        "cache_test": true,
+        "cache_train": true
+    }
+}
