@@ -39,7 +39,8 @@
                 }
             }
         ],
-        "nb_steps": 100
+        "nb_steps": 100,
+        "set_honest_clients_as_clients": false
     },
     "model": {
         "name": "cnn_cifar",

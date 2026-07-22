@@ -35,7 +35,7 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [10.,1.,0.5,0.1], #[0.5, 0.1], # tuned for cifar10
+                "learning_rate": [5.,2.,1.,0.5,0.1], #[0.5, 0.1], # tuned for cifar10
                 "milestones": []
                 }
             },
