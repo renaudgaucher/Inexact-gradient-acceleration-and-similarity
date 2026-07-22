@@ -16,8 +16,8 @@ default_config = {
         "device": "cuda",# if torch.cuda.is_available() else "cpu",
         "training_seed": 0,
         "nb_training_seeds": 1,
-        "nb_honest_clients": 25, # to chose. For instance I guess n=20 + f = 1 or 2 is good
-        "f": [1],#, 2], # to choose. Tune with f=0
+        "nb_honest_clients": 40, # to chose. For instance I guess n=20 + f = 1 or 2 is good
+        "f": [0],#, 2], # to choose. Tune with f=0
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1, 
@@ -35,53 +35,54 @@ default_config = {
                 "momentum": [0.],
                 "optimizer_parameters": { 
                             },
-                "learning_rate": [0.1],#[0.5, 0.1], # tuned for cifar10
+                "learning_rate": [10.,1.,0.5,0.1], #[0.5, 0.1], # tuned for cifar10
                 "milestones": []
                 }
             },
-            {
-            "name": "FedProxyProx",
-            "parameters": {
-                "optimizer_name": "SGD",
-                "momentum": [0.],
-                "optimizer_parameters": { 
-                            },
-                "learning_rate":  [1.], #10.,
-                "prox_optimizaer_name": "SGD",
-                "prox_optimizer_params": {"learning_rate" : 0.05,
-                                          "security_factor" : 10},
+            # {
+            # "name": "AccExtraGrad",
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "optimizer_parameters": {
+            #                 },
+            #     "learning_rate":  [0.05], 
+            #     "momentum":[0.01], # Not a true momentum term: corresponds to 'gamma', which in theory,
+            #     # corresponds to the strong convexity. Should always be smaller than 1/lr.
+            #     # "tau_factor": 1, (multiplies the tau - i.e. the averaging factor)
+            #     # "fast_lr_factor": 1., (multiplies the large step size)
+            #     }
+            # },
+            # {
+            # "name": "FedProxyProx",
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate":  [1.], #10.,
+            #     "prox_optimizaer_name": "SGD",
+            #     "prox_optimizer_params": {"learning_rate" : 0.05,
+            #                               "security_factor" : 10},
                 
-                }
-            },
-            {
-            "name": "AccExtraGradProx",
-            "parameters": {
-                "optimizer_name": "SGD",
-                "optimizer_parameters": { 
-                            },
-                "learning_rate":  [0.2],#[0.5,0.2], #5.,1. not converging
-                "momentum":[0.01],
-                "tau_factor": 1,
-                "fast_lr_factor": 1, 
-                "prox_optimizaer_name": "SGD",
-                "prox_optimizer_params": {"learning_rate" : 0.05,
-                                          "security_factor" : 10},
-                }
-            },
-            {
-            "name": "AccExtraGrad",
-            "parameters": {
-                "optimizer_name": "SGD",
-                "optimizer_parameters": {
-                            },
-                "learning_rate":  [0.05], 
-                "momentum":[0.01], # Not a true momentum term, expected to be smaller than 1/lr, that's all
-                "tau_factor": 1,
-                "fast_lr_factor": 1., 
-                }
-            },
+            #     }
+            # },
+            # {
+            # "name": "AccExtraGradProx",
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate":  [0.2],#[0.5,0.2], #5.,1. not converging
+            #     "momentum":[0.005],
+            #     "tau_factor": 1,
+            #     "fast_lr_factor": 1, 
+            #     "prox_optimizaer_name": "SGD",
+            #     "prox_optimizer_params": {"learning_rate" : 0.05,
+            #                               "security_factor" : 10},
+            #     }
+            # },
         ],
-        "nb_steps": 200,
+        "nb_steps": 100,
     },
     "model": {
         "name": "cnn_cifar",
@@ -92,13 +93,9 @@ default_config = {
     },
     "aggregator": [
         {
-            "name": "CAF",
+            "name": "Huber",
             "parameters": {}
-        },
-        # {
-        #     "name": "Huber",
-        #     "parameters": {}
-        # }
+        }
     ],
     "pre_aggregators": [
         # {
@@ -128,8 +125,8 @@ default_config = {
         # },
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 10,
-        "batch_size_evaluation": 2**6, # to increase for more accuracy
+        "evaluation_delta": 100,
+        "batch_size_evaluation": 2**8, # to increase for more accuracy
         "evaluate_on_test": True,
         "store_per_client_metrics": True,
         "store_models": False,

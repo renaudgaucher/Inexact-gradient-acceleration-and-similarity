@@ -350,6 +350,7 @@ def start_training(params):
     if training_algorithm_name in ["AccExtraGradProx", "AccExtraGrad"]:
         tau_factor = training_algorithm_parameters.get("tau_factor",1)
         fast_lr_factor = training_algorithm_parameters.get("fast_lr_factor",1) 
+        
         slow_step_size = params_manager.get_learning_rate()
         gamma = training_algorithm_parameters.get("momentum",params_manager.get_weight_decay())   #theory: weight decay
         tau = min(1,(slow_step_size*gamma/2)**0.5*tau_factor) # max((slow_step_size/gamma/2)**0.5, 1/(training_step+1))
