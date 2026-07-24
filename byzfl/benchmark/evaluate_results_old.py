@@ -2416,7 +2416,7 @@ def paper_used_plots(path_to_results, path_to_plot, use_ref=False,
                                         else:
                                             mean_data = mean_data
                                         
-                                        label = f"{name_algorithms[training_algorithm]}" + f" lr={lr}"
+                                        label = f"{name_algorithms[training_algorithm]}" + f" lr={lr}"+ f"mom={momentum}"
                                         # if momentum > 0.0:
                                         #     label += f", ß={momentum}"
                                         

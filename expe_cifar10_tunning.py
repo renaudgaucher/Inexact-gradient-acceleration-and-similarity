@@ -45,8 +45,8 @@ default_config = {
                  "optimizer_name": "SGD",
                  "optimizer_parameters": {
                              },
-                 "learning_rate":  [0.5,0.1], 
-                 "momentum":[0.1,0.01,0.001], # Not a true momentum term: corresponds to 'gamma', which in theory,
+                 "learning_rate":[0.5],#  [0.5,0.1], 
+                 "momentum": [0.1,0.01],#[0.1,0.01,0.001], # Not a true momentum term: corresponds to 'gamma', which in theory,
                  # corresponds to the strong convexity. Should always be smaller than 1/lr.
                  # "tau_factor": 1, (multiplies the tau - i.e. the averaging factor)
                  # "fast_lr_factor": 1., (multiplies the large step size)

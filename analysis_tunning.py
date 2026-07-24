@@ -7,7 +7,7 @@ with open('config.json', 'r') as f:
     #     ref_config = json.load(f)
 
     path_training_results = default_config["evaluation_and_results"]["results_directory"]
-    path_to_plot = "./plot/cifar"
+    path_to_plot = "./plot/cifar/acc"
     nb_steps = None #5000
     use_ref= False# True
     zoom= False#True

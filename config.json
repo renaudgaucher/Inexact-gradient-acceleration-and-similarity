@@ -40,13 +40,11 @@
                     "optimizer_name": "SGD",
                     "optimizer_parameters": {},
                     "learning_rate": [
-                        0.5,
-                        0.1
+                        0.5
                     ],
                     "momentum": [
                         0.1,
-                        0.01,
-                        0.001
+                        0.01
                     ]
                 }
             }
