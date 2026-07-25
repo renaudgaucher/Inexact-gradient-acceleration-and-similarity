@@ -48,7 +48,7 @@ default_config = {
                 "optimizer_parameters": { 
                             },
                 "learning_rate":  [10.,2.],#10.,5.,2.,1., 0.5], 
-                "prox_optimizaer_name": "SGD",
+                "prox_optimizer_name": "SGD",
                 "prox_optimizer_params": {"learning_rate" : 0.05,
                                           "security_factor" : 10},
                 

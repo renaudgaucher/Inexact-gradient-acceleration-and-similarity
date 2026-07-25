@@ -37,7 +37,7 @@ default_config = {
                 }
             },
             {
-            "name": "FedProxyProx",
+            "name": "FedProxyProx", # PIGS
             "parameters": {
                 "optimizer_name": "SGD",
                 "momentum": [0.],
@@ -51,16 +51,16 @@ default_config = {
                 }
             },
             {
-            "name": "AccExtraGradProx",
+            "name": "AccExtraGradProx", 
             "parameters": {
                 "optimizer_name": "SGD",
                 "optimizer_parameters": { 
                             },
                 "learning_rate":  [0.5],#[0.5,0.2], #5.,1. not converging
-                "momentum":[0.01],
+                "momentum":[0.01], # should be set as the weight_decay, or anything less than 1/lr
                 "tau_factor": 1,
                 "fast_lr_factor": 1, 
-                "prox_optimizaer_name": "SGD",
+                "prox_optimizer_name": "SGD",
                 "prox_optimizer_params": {"learning_rate" : 0.05,
                                           "security_factor" : 10},
                 }
@@ -72,7 +72,7 @@ default_config = {
                 "optimizer_parameters": {
                             },
                 "learning_rate":  [0.1], 
-                "momentum":[0.01], # Not a true momentum term, expected to be smaller than 1/lr, that's all
+                "momentum":[0.01],  # should be set as the weight_decay
                 "tau_factor": 1,
                 "fast_lr_factor": 1., 
                 }
