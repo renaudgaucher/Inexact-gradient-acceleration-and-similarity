@@ -27,11 +27,18 @@ AGG_NAME = "Huber"
 ATTACK_NAME = "Optimal_ALittleIsEnough"   # "ALIE" (no-op at f=0)
 
 # ---- learning-rate search grids -------------------------------------------------
-# GD is an absolute grid; the other methods are anchored on GD's tuned LR eta* (see anchored_grid):
-# PIGS larger than GD, extra-gradient around/below GD (per the accelerated-method behaviour).
-GD_GRID = [0.03, 0.1, 0.3, 1.0, 3.0]
-PIGS_MULT = [5, 10, 20, 50]
-EXTRAGRAD_MULT = [0.2, 0.5, 1.0, 2.0, 5.0]
+# GD is an absolute grid; the other methods are anchored on GD's tuned LR eta* (see anchored_grid).
+# PIGS >> GD; extra-gradient near/below GD. Method-specific notes:
+#   - Acc. ExtraGrad WITHOUT prox: don't push much above GD (cap the grid at ~2*eta*).
+#   - Acc. ExtraGrad WITH prox: expected to tolerate larger steps than the plain variant (tbc
+#     numerically), so its grid reaches higher (up to ~5*eta*).
+#   - PIGS: very homogeneous data (iid) may allow significantly larger steps, so iid gets one extra
+#     (larger) multiplier on top of the shared grid.
+GD_GRID = [0.05, 0.1, 0.2, 0.5, 1.0]
+PIGS_MULT = [5, 10, 20, 50, 100]                       # PIGS, non-iid heterogeneity levels
+PIGS_MULT_IID = [10, 50, 100, 200]              # PIGS, iid: one extra (larger) data point
+EXTRAGRAD_MULT = [0.25, 0.5, 1.0, 2.0]        # Acc. ExtraGrad, no prox
+EXTRAGRADPROX_MULT = [0.2, 0.5, 1.0, 2.0, 5.0, 10., 20.]    # Acc. ExtraGrad + prox (allows larger steps)
 
 # ---- heterogeneity levels: (data_distribution entry, folder tag) ----------------
 # iid + Dirichlet(alpha) for alpha in {0.1, 1, 5}. Floats (1.0/5.0) and None (iid) match the
@@ -159,12 +166,11 @@ def base_config(results_directory, data_distribution, training_algorithms,
     }
 
 
-def select_best_lr_by_train_loss(results_dir, algo, data_dist, nb_seeds=1):
-    """Return the LR (float) with the lowest train loss for `algo` at n=40, f=0, this het.
+def lr_run_folders(results_dir, algo, data_dist):
+    """[(lr, folder_path), ...] for every per-LR run of `algo` at n=40, f=0, this het (sorted by lr).
 
-    Globs the per-LR run folders for the method/heterogeneity, reads each train-loss curve, averages
-    over seeds and takes the min over steps. Glob-based, so it is robust to LR float formatting and
-    needs no knowledge of the grid that produced the runs. Non-finite (diverged) curves are ignored.
+    Glob-based on the run-folder prefix, so it is robust to LR float formatting and needs no
+    knowledge of the grid that produced the runs.
     """
     # Lazy import: keeps this module light for spawned workers (evaluate_results pulls matplotlib).
     from byzfl.benchmark.evaluate_results import experiment_base_name
@@ -176,23 +182,55 @@ def select_best_lr_by_train_loss(results_dir, algo, data_dist, nb_seeds=1):
     # (e.g. AccExtraGrad vs AccExtraGradProx).
     prefix = f"{base}_{ATTACK_NAME}_lr_"
 
-    best_lr, best_val = None, np.inf
+    out = []
     for folder in glob.glob(os.path.join(results_dir, prefix + "*")):
         lr_str = os.path.basename(folder)[len(prefix):].split("_mom_")[0]
-        curves = []
-        for s in range(nb_seeds):
-            fp = os.path.join(folder, f"train_loss_tr_seed_{s}_dd_seed_0.txt")
-            if os.path.exists(fp):
-                curves.append(np.genfromtxt(fp, delimiter=","))
-        if not curves:
+        try:
+            out.append((float(lr_str), folder))
+        except ValueError:
             continue
-        val = float(np.min(np.mean(curves, axis=0)))   # min over steps of seed-mean train loss
+    return sorted(out)
+
+
+def _mean_train_loss_curve(folder, nb_seeds):
+    """Seed-averaged train-loss curve for one run folder, or None if no file is readable."""
+    curves = []
+    for s in range(nb_seeds):
+        fp = os.path.join(folder, f"train_loss_tr_seed_{s}_dd_seed_0.txt")
+        if os.path.exists(fp):
+            curves.append(np.genfromtxt(fp, delimiter=","))
+    if not curves:
+        return None
+    return np.mean(curves, axis=0)
+
+
+def train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds=1):
+    """[(lr, mean_train_loss_curve), ...] sorted by lr; skips LRs with no readable curve."""
+    result = []
+    for lr, folder in lr_run_folders(results_dir, algo, data_dist):
+        curve = _mean_train_loss_curve(folder, nb_seeds)
+        if curve is not None:
+            result.append((lr, curve))
+    return result
+
+
+def select_best_lr_by_train_loss(results_dir, algo, data_dist, nb_seeds=1):
+    """Return the LR (float) with the lowest train loss for `algo` at n=40, f=0, this het.
+
+    Selection = area under the train-loss curve (mean over steps of the seed-mean curve). This
+    rewards driving the loss down fastest and keeping it low, and (unlike min- or final-loss) does
+    not tie toward the slowest LR when several LRs converge to the same floor. Non-finite (diverged)
+    curves are ignored. Robust to LR float formatting (see `lr_run_folders`).
+    """
+    best_lr, best_val = None, np.inf
+    for lr, curve in train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds):
+        val = float(np.mean(curve))   # area under the curve (mean over steps) of seed-mean train loss
         if np.isfinite(val) and val < best_val:
-            best_lr, best_val = float(lr_str), val
+            best_lr, best_val = lr, val
 
     if best_lr is None:
         raise RuntimeError(
-            f"No usable train-loss results for algo={algo!r} in {results_dir!r} "
-            f"(prefix {prefix!r}). Did the previous tuning stage run to completion?"
+            f"No usable train-loss results for algo={algo!r} in {results_dir!r}. "
+            f"Did the previous tuning stage run to completion?"
         )
     return best_lr

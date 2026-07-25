@@ -2411,7 +2411,7 @@ def paper_used_plots(path_to_results, path_to_plot, use_ref=False,
 
                                         if metric in ['train_loss']:
                                             mean_data = mean_data - ylim_lower
-                                            if (mean_data < 1.e-6).any():
+                                            if (mean_data < 0).any():
                                                 print("zero :(", ylim_lower, np.min(mean_data))
                                         else:
                                             mean_data = mean_data

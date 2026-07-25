@@ -22,8 +22,8 @@ from expe_mnist_alie_common import (
 GD_DIR = "./results/mnist_alie/tune_gd"
 ACC_ROOT = "./results/mnist_alie/tune_acc"
 OUT_ROOT = "./results/mnist_alie/prod"
-NB_SEEDS = 5
-NB_JOBS = 8
+NB_SEEDS = 1
+NB_JOBS = 10
 
 
 def main():
