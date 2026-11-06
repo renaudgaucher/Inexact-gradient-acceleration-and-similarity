@@ -284,9 +284,10 @@ class ProxClient(Client):
         self.l2_regularization = params.get("weight_decay", 0.)
         self.prox_optimizer_name = params.get(
             "prox_optimizer_name",
-            params.get("prox_optimizaer_name", "SGD")
+            params.get("prox_optimizer_name", "SGD")
         )
         self.prox_optimizer_params = params.get("prox_optimizer_params", {})
+        self.nb_iter_gd =  self.prox_optimizer_params.get("nb_iter", 1000)
     
 
     def get_flatten_params(self):
@@ -379,20 +380,17 @@ class ProxClient(Client):
             return last_loss, last_grad_norm
         
         if self.prox_optimizer_name == "SGD":
-            self.prox_optimizer_lr = self.prox_optimizer_params.get("learning_rate", self.prox_step_size/2)
-
+            self.prox_optimizer_lr = self.prox_optimizer_params.get("learning_rate", self.prox_step_size)
+            self.prox_optimizer_lr = min(self.prox_optimizer_lr, self.prox_step_size/4)
             optimizer = torch.optim.SGD(
                 self.model.parameters(), lr=self.prox_optimizer_lr, 
             )
-            nb_iter_gd=  self.prox_optimizer_params.get("nb_iter", 1000)
-            security_factor = self.prox_optimizer_params.get("security_factor", 1.)
 
-            scheduler = torch.optim.lr_scheduler.PolynomialLR(
-                    optimizer,
-                    total_iters=nb_iter_gd,
-                    power=0.5
-                )
-            for i in range(nb_iter_gd):
+            security_factor = self.prox_optimizer_params.get("security_factor", 1.)
+            patience =  self.prox_optimizer_params.get("patience", True)
+
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.998)
+            for i in range(self.nb_iter_gd):
                 
                 optimizer.zero_grad()
                 loss = self.proximal_objective(
@@ -418,12 +416,20 @@ class ProxClient(Client):
                 if grad_norm <  distance / (self.prox_step_size**2 * 4 * security_factor) or grad_norm < 1e-10:
                     return current_loss.item(), grad_norm
 
-                if (i==0 or i == nb_iter_gd - 1) and verbose==2:
+                if (i==0 or i == self.nb_iter_gd - 1) and verbose==2:
                     print(".  Iteration " + str(i) + " prox_loss: " + str(current_loss.item()) + \
                         "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-                if (i == nb_iter_gd - 1):
+                if (i == self.nb_iter_gd - 1):
                     print(f"WARNING prox_stopped w.o criterion satisfied: grad norm vs step {grad_norm} !< {distance / (self.prox_step_size**2 * 4 * security_factor)}"\
                       " prox loss " + str(current_loss.item()))
+                    if self.nb_iter_gd > 100 and not patience:
+                        self.nb_iter_gd = int(self.nb_iter_gd * (0.1**0.01))
+                    else:
+                        self.nb_iter_gd = 100
+                        # self.prox_optimizer_name = "LBFGS"
+                        ## Fatigue: to prevent the usage of SGD when the prox never converge, reduce
+                        # the number of iterations every time the prox does not converge, then go to bfgs
+                    
             
                 last_loss = current_loss.item()
             last_grad_norm = self.get_flat_gradients().norm().item()**2.

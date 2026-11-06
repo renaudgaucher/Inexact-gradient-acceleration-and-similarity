@@ -20,25 +20,27 @@ import numpy as np
 # ---- fixed experiment constants -------------------------------------------------
 NB_HONEST = 40                      # honest clients (Byzantine added on top: n = 40 + f)
 F_PROD = [0, 1, 5, 10, 20]          # Byzantine counts for the production sweep
-NB_STEPS = 5000
+NB_STEPS = 5000            # production horizon (stage 3)
+NB_STEPS_TUNE = 1000       # shorter horizon for LR tuning (stages 1-2)
 EVAL_DELTA = 100
 WEIGHT_DECAY = 0.01
 AGG_NAME = "Huber"
 ATTACK_NAME = "Optimal_ALittleIsEnough"   # "ALIE" (no-op at f=0)
+REF_ATTACK = "NoAttack"                   # f=0 reference run -> achievable optimum L* (for L - L*)
 
 # ---- learning-rate search grids -------------------------------------------------
-# GD is an absolute grid; the other methods are anchored on GD's tuned LR eta* (see anchored_grid).
-# PIGS >> GD; extra-gradient near/below GD. Method-specific notes:
-#   - Acc. ExtraGrad WITHOUT prox: don't push much above GD (cap the grid at ~2*eta*).
-#   - Acc. ExtraGrad WITH prox: expected to tolerate larger steps than the plain variant (tbc
-#     numerically), so its grid reaches higher (up to ~5*eta*).
-#   - PIGS: very homogeneous data (iid) may allow significantly larger steps, so iid gets one extra
-#     (larger) multiplier on top of the shared grid.
-GD_GRID = [0.05, 0.1, 0.2, 0.5, 1.0]
-PIGS_MULT = [5, 10, 20, 50, 100]                       # PIGS, non-iid heterogeneity levels
-PIGS_MULT_IID = [10, 50, 100, 200]              # PIGS, iid: one extra (larger) data point
-EXTRAGRAD_MULT = [0.25, 0.5, 1.0, 2.0]        # Acc. ExtraGrad, no prox
-EXTRAGRADPROX_MULT = [0.2, 0.5, 1.0, 2.0, 5.0, 10., 20.]    # Acc. ExtraGrad + prox (allows larger steps)
+# GD is an absolute grid; the robust methods use multiplier grids anchored on a tuned LR:
+#   - PIGS and Acc. ExtraGrad (no prox): anchored on GD's tuned eta*_GD (see anchored_grid).
+#   - Acc. ExtraGrad + prox: anchored on the NO-PROX method's tuned LR eta*_aeg (not eta*_GD) --
+#     {1,2,5,10,50,100} x eta*_aeg, i.e. the no-prox optimum and up to 100x larger (prox is
+#     expected to tolerate much larger steps).
+#   - PIGS: homogeneous data uses the extended grid (see pigs_multipliers): iid OR Dirichlet
+#     alpha >= 2 -> PIGS_MULT_IID, else PIGS_MULT.
+GD_GRID = [0.05, 0.1, 0.5] # we removed 0.2 as it created highly unstable curves altough 'efficient ones in practice' (edge of stability ?)
+PIGS_MULT = [2, 5, 10, 20, 50]                       # PIGS, more heterogeneous data (alpha < 2)
+PIGS_MULT_IID = [10, 50, 100, 200]                     # PIGS, homogeneous data (iid or alpha >= 2)
+EXTRAGRAD_MULT = [0.25, 0.5, 1.0, 2.0]                 # Acc. ExtraGrad (no prox), x eta*_GD
+EXTRAGRADPROX_MULT = [1, 2, 5, 10, 50, 100]            # Acc. ExtraGrad + prox, x eta*_aeg (no-prox opt)
 
 # ---- heterogeneity levels: (data_distribution entry, folder tag) ----------------
 # iid + Dirichlet(alpha) for alpha in {0.1, 1, 5}. Floats (1.0/5.0) and None (iid) match the
@@ -60,8 +62,16 @@ def dist_name_and_param(data_dist):
 
 
 def anchored_grid(mults, eta):
-    """LR grid for a method anchored on GD's tuned LR `eta` (rounded to kill float dust)."""
+    """LR grid for a method anchored on a tuned LR `eta` (rounded to kill float dust)."""
     return [round(m * eta, 10) for m in mults]
+
+
+def pigs_multipliers(data_dist):
+    """PIGS multiplier grid: the extended (homogeneous) grid for iid OR Dirichlet(alpha >= 2)."""
+    name, param = dist_name_and_param(data_dist)
+    if name == "iid" or (param is not None and param >= 2):
+        return PIGS_MULT_IID
+    return PIGS_MULT
 
 
 # ---- per-method config builders (fixed HPs copied from expe_mnist.py lines 30-79) ----
@@ -102,7 +112,8 @@ def accextragradprox(lr_list):
             "tau_factor": 1,
             "fast_lr_factor": 1,
             "prox_optimizer_name": "SGD",
-            "prox_optimizer_params": {"learning_rate": 0.05, "security_factor": 10},
+            "prox_optimizer_params": {"learning_rate": 0.05, "security_factor": 10,
+                        "patience":True},
         },
     }
 
@@ -122,7 +133,7 @@ def accextragrad(lr_list):
 
 
 def base_config(results_directory, data_distribution, training_algorithms,
-                f_list, nb_training_seeds=1, nb_steps=NB_STEPS):
+                f_list, nb_training_seeds=1, nb_steps=NB_STEPS, attack_name=ATTACK_NAME):
     """Full benchmark config dict. `data_distribution` is a list of heterogeneity entries.
 
     size_train_set stays 0.8: the eval loop raises without a val split (train.py:389), so 1.0 is
@@ -153,7 +164,7 @@ def base_config(results_directory, data_distribution, training_algorithms,
         "aggregator": [{"name": AGG_NAME, "parameters": {}}],
         "pre_aggregators": [],
         "honest_clients": {"batch_size": 0},  # 0 = full batch (GD)
-        "attack": [{"name": ATTACK_NAME, "parameters": {}}],
+        "attack": [{"name": attack_name, "parameters": {}}],
         "evaluation_and_results": {
             "evaluation_delta": EVAL_DELTA,
             "batch_size_evaluation": 2 ** 6,
@@ -166,7 +177,7 @@ def base_config(results_directory, data_distribution, training_algorithms,
     }
 
 
-def lr_run_folders(results_dir, algo, data_dist):
+def lr_run_folders(results_dir, algo, data_dist, attack=ATTACK_NAME):
     """[(lr, folder_path), ...] for every per-LR run of `algo` at n=40, f=0, this het (sorted by lr).
 
     Glob-based on the run-folder prefix, so it is robust to LR float formatting and needs no
@@ -180,7 +191,7 @@ def lr_run_folders(results_dir, algo, data_dist):
                                 NB_HONEST, 0, 0, dist_name, param, AGG_NAME, "")
     # The "_n_" boundary after the algo name keeps this prefix from matching a longer algo name
     # (e.g. AccExtraGrad vs AccExtraGradProx).
-    prefix = f"{base}_{ATTACK_NAME}_lr_"
+    prefix = f"{base}_{attack}_lr_"
 
     out = []
     for folder in glob.glob(os.path.join(results_dir, prefix + "*")):
@@ -204,14 +215,27 @@ def _mean_train_loss_curve(folder, nb_seeds):
     return np.mean(curves, axis=0)
 
 
-def train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds=1):
+def train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds=1, attack=ATTACK_NAME):
     """[(lr, mean_train_loss_curve), ...] sorted by lr; skips LRs with no readable curve."""
     result = []
-    for lr, folder in lr_run_folders(results_dir, algo, data_dist):
+    for lr, folder in lr_run_folders(results_dir, algo, data_dist, attack=attack):
         curve = _mean_train_loss_curve(folder, nb_seeds)
         if curve is not None:
             result.append((lr, curve))
     return result
+
+
+def reference_optimum(results_dir, data_dist, algo="FedProxyProx", nb_seeds=1):
+    """L*: the lowest train loss of the f=0 / NoAttack reference run of `algo` for this het.
+
+    Reads the reference run produced by expe_mnist_prod.py (attack=REF_ATTACK, f=0), which minimises
+    the SAME objective as the sweep (same weight_decay/aggregator/horizon), so L* is the true floor
+    of the production curves. Use it to plot suboptimality L - L*. Returns None if not found.
+    """
+    mins = [float(np.min(c)) for _lr, c in
+            train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds, attack=REF_ATTACK)
+            if np.isfinite(np.min(c))]
+    return min(mins) if mins else None
 
 
 def select_best_lr_by_train_loss(results_dir, algo, data_dist, nb_seeds=1):
@@ -234,3 +258,109 @@ def select_best_lr_by_train_loss(results_dir, algo, data_dist, nb_seeds=1):
             f"Did the previous tuning stage run to completion?"
         )
     return best_lr
+
+
+def lr_diagnostics(results_dir, algo, data_dist, nb_seeds=1, tail_frac=0.5):
+    """Per-LR numbers to choose a learning rate *manually*, one dict per LR (sorted by lr).
+
+    The automatic selector collapses each curve to `area` alone, which hides oscillation: an
+    edge-of-stability LR can plunge fast (low area) yet wobble badly around its floor. These extra
+    columns expose that:
+      - area     : mean over ALL steps  (== select_best_lr_by_train_loss's metric).
+      - tail     : mean over the last `tail_frac` of steps -- the floor it actually settles to.
+      - wobble   : mean |Delta L| / L over that tail -- step-to-step relative jitter. Near 0 for a
+                   smoothly converged run; large for an oscillating / edge-of-stability run.
+      - finite   : False if the curve went non-finite (diverged) anywhere.
+    A good production LR has low `tail` AND low `wobble`; a low `area` with high `wobble` is the
+    "fast but unstable" case you saw at Dirichlet 0.1.
+    """
+    out = []
+    for lr, curve in train_loss_curves_by_lr(results_dir, algo, data_dist, nb_seeds):
+        c = np.asarray(curve, dtype=float)
+        finite = bool(np.isfinite(c).all())
+        tail = c[int((1.0 - tail_frac) * len(c)):]
+        rel = np.abs(np.diff(tail)) / np.maximum(np.abs(tail[:-1]), 1e-12)
+        out.append({
+            "lr": lr,
+            "area": float(np.mean(c)) if finite else np.inf,
+            "tail": float(np.mean(tail)) if finite else np.inf,
+            "wobble": float(np.mean(rel)) if finite and len(rel) else np.inf,
+            "finite": finite,
+        })
+    return out
+
+
+def print_lr_diagnostics(results_dir, algo, data_dist, nb_seeds=1, tail_frac=0.5,
+                         max_wobble=0.02):
+    """Pretty-print `lr_diagnostics` and flag the area-optimum and the 'stable-best' pick."""
+    diag = lr_diagnostics(results_dir, algo, data_dist, nb_seeds, tail_frac)
+    if not diag:
+        print(f"  (no results for {algo})")
+        return
+    area_lr = min((d for d in diag if d["finite"]), key=lambda d: d["area"], default=None)
+    stable_lr = select_best_lr_stable(results_dir, algo, data_dist, nb_seeds, max_wobble, tail_frac)
+    print(f"  {algo}   (tail={tail_frac:.0%}, max_wobble={max_wobble})")
+    print(f"    {'lr':>10} {'area':>12} {'tail':>12} {'wobble':>10}  flags")
+    for d in diag:
+        flags = []
+        if not d["finite"]:
+            flags.append("DIVERGED")
+        if d["wobble"] > max_wobble:
+            flags.append("unstable")
+        if area_lr and d["lr"] == area_lr["lr"]:
+            flags.append("<-area")
+        if d["lr"] == stable_lr:
+            flags.append("<-STABLE-BEST")
+        print(f"    {d['lr']:>10.4g} {d['area']:>12.6g} {d['tail']:>12.6g} "
+              f"{d['wobble']:>10.4g}  {' '.join(flags)}")
+
+
+def select_best_lr_stable(results_dir, algo, data_dist, nb_seeds=1,
+                          max_wobble=0.02, tail_frac=0.5):
+    """Lowest-`tail` LR among those whose tail is stable (wobble <= max_wobble).
+
+    A stability-filtered variant of `select_best_lr_by_train_loss`: first keep only LRs that have
+    actually settled (small relative jitter in the last `tail_frac` of steps), then among those take
+    the one with the lowest floor. Falls back to all finite LRs if none clear the wobble bar (so it
+    never returns None when there is data). This is the automatic analogue of the manual choice.
+    """
+    diag = lr_diagnostics(results_dir, algo, data_dist, nb_seeds, tail_frac)
+    stable = [d for d in diag if d["finite"] and d["wobble"] <= max_wobble]
+    pool = stable or [d for d in diag if d["finite"]]
+    if not pool:
+        raise RuntimeError(f"No usable train-loss results for algo={algo!r} in {results_dir!r}.")
+    return min(pool, key=lambda d: d["tail"])["lr"]
+
+
+def prod_run_folder(results_dir, algo, data_dist, f, attack=ATTACK_NAME):
+    """The single production run folder for (algo, Byzantine count f, het), or None.
+
+    Production naming: n = 40 + f honest+Byzantine workers, f real, d = f declared (tolerated_f
+    defaults to f). One learning rate per method, so the `_lr_*` glob matches exactly one folder.
+    """
+    from byzfl.benchmark.evaluate_results import experiment_base_name
+
+    dist_name, param = dist_name_and_param(data_dist)
+    base = experiment_base_name("mnist", "logreg_mnist", algo,
+                                NB_HONEST + f, f, f, dist_name, param, AGG_NAME, "")
+    hits = sorted(glob.glob(os.path.join(results_dir, f"{base}_{attack}_lr_*")))
+    return hits[0] if hits else None
+
+
+def stacked_train_loss(folder, nb_training_seeds=1, nb_dd_seeds=1, training_seed=0, dd_seed=0):
+    """Train-loss curves stacked over all seeds -> array (n_seeds, T), or None if none readable.
+
+    Iterates both seed dimensions (train x data-distribution), exactly like analysis_mnist.py, so it
+    handles multiple seeds transparently (a single seed gives shape (1, T)).
+    """
+    curves = []
+    for dd in range(nb_dd_seeds):
+        for tr in range(nb_training_seeds):
+            fp = os.path.join(folder, f"train_loss_tr_seed_{tr + training_seed}"
+                                      f"_dd_seed_{dd + dd_seed}.txt")
+            if os.path.exists(fp):
+                curves.append(np.genfromtxt(fp, delimiter=","))
+    if not curves:
+        return None
+    t = min(len(c) for c in curves)
+    return np.vstack([c[:t] for c in curves])

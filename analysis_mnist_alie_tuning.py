@@ -51,8 +51,16 @@ def het_label(data_dist):
 def plot_lr_grid(curves, title, out_base):
     """curves: list of (lr, train_loss_curve). Draw all LRs on one log-y figure; star the best."""
     # Best = lowest area under the curve (mean over steps), matching select_best_lr_by_train_loss.
+    # (Scale-invariant to the shared normalisation below, so it is computed on the raw curves.)
     finite = [(lr, c) for lr, c in curves if np.isfinite(np.mean(c))]
     best_lr = min(finite, key=lambda kv: np.mean(kv[1]))[0] if finite else None
+
+    # Normalise every LR curve by ONE shared scalar -- the largest initial (step-0) loss across the
+    # grid -- so the y-axis reads as a fraction of the initial loss (starts at ~1). All LRs of one
+    # algorithm share essentially the same start, but this keeps the y-axis consistent with the
+    # prod plot's shared-divisor normalisation.
+    inits = [float(c[0]) for _lr, c in curves if np.isfinite(c[0])]
+    denom = max(inits) if inits else 1.0
 
     palette = sns.color_palette("colorblind", n_colors=max(len(curves), 3))
     matplotlib.rcParams.update({"text.usetex": False, "font.family": "DejaVu Sans"})
@@ -61,7 +69,7 @@ def plot_lr_grid(curves, title, out_base):
     for i, (lr, curve) in enumerate(curves):           # already sorted by lr
         is_best = (lr == best_lr)
         ax.plot(
-            np.arange(1,1+len(curve)), curve,        # x starts at 1 for log-x
+            np.arange(1, 1 + len(curve)), np.asarray(curve) / denom,   # x starts at 1 for log-x
             color=palette[i],
             alpha=0.6,
             label=f"lr={lr}" + ("  ★ best" if is_best else ""),
@@ -71,7 +79,7 @@ def plot_lr_grid(curves, title, out_base):
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("Step")
-    ax.set_ylabel("Train loss (log scale)")
+    ax.set_ylabel("Train loss / L0_max  (log scale)")
     ax.set_title(title)
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(title="learning rate", fontsize=9)

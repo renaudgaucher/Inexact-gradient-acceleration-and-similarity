@@ -1,0 +1,81 @@
+algo,algo_label,het,f,err,iters
+moDSGD,D-GD,iid,0,0.0001,2428
+moDSGD,D-GD,iid,1,0.0035459177805800043,1038
+moDSGD,D-GD,iid,5,0.077443152874586,56
+moDSGD,D-GD,iid,10,0.28550181154595,11
+moDSGD,D-GD,iid,20,1.2890958958267043,1
+FedProxyProx,PIGS,iid,0,0.0001,32
+FedProxyProx,PIGS,iid,1,0.003605427463210004,17
+FedProxyProx,PIGS,iid,5,0.078671462488064,3
+FedProxyProx,PIGS,iid,10,0.28996916242826803,1
+FedProxyProx,PIGS,iid,20,1.313381953203602,1
+AccExtraGrad,Acc. ExtraGrad,iid,0,0.0001,367
+AccExtraGrad,Acc. ExtraGrad,iid,1,0.0036061254871880013,267
+AccExtraGrad,Acc. ExtraGrad,iid,5,0.078679947629476,97
+AccExtraGrad,Acc. ExtraGrad,iid,10,0.29001161096683997,11
+AccExtraGrad,Acc. ExtraGrad,iid,20,1.7438743503033278,1
+AccExtraGradProx,Acc. ExtraGrad + Prox,iid,0,0.0001,103
+AccExtraGradProx,Acc. ExtraGrad + Prox,iid,1,0.0036062545761000055,59
+AccExtraGradProx,Acc. ExtraGrad + Prox,iid,5,0.078680248682094,7
+AccExtraGradProx,Acc. ExtraGrad + Prox,iid,10,0.29001192403721,3
+AccExtraGradProx,Acc. ExtraGrad + Prox,iid,20,1.3135725712953898,1
+moDSGD,D-GD,dir0.1,0,0.0001,3099
+moDSGD,D-GD,dir0.1,1,0.47217767601649996,9
+moDSGD,D-GD,dir0.1,5,7.932450322205242,3183
+moDSGD,D-GD,dir0.1,10,44.46640103963057,2981
+moDSGD,D-GD,dir0.1,20,695.2144279324834,3645
+FedProxyProx,PIGS,dir0.1,0,0.0001,760
+FedProxyProx,PIGS,dir0.1,1,0.4794668811772,2
+FedProxyProx,PIGS,dir0.1,5,8.036306899863924,695
+FedProxyProx,PIGS,dir0.1,10,44.90319436772507,717
+FedProxyProx,PIGS,dir0.1,20,717.9998660489385,1035
+AccExtraGrad,Acc. ExtraGrad,dir0.1,0,0.0001,463
+AccExtraGrad,Acc. ExtraGrad,dir0.1,1,0.948389532542638,3
+AccExtraGrad,Acc. ExtraGrad,dir0.1,5,12.551212758475959,327
+AccExtraGrad,Acc. ExtraGrad,dir0.1,10,48.32155838921708,399
+AccExtraGrad,Acc. ExtraGrad,dir0.1,20,718.1251642575564,699
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir0.1,0,0.0001,187
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir0.1,1,1.6696167869750842,1
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir0.1,5,16.066838386565856,123
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir0.1,10,76.55693740571179,297
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir0.1,20,733.4718875485721,367
+moDSGD,D-GD,dir1.0,0,0.0001,2455
+moDSGD,D-GD,dir1.0,1,0.046349262336056,107
+moDSGD,D-GD,dir1.0,5,0.873193882650288,2
+moDSGD,D-GD,dir1.0,10,3.97379507963671,3281
+moDSGD,D-GD,dir1.0,20,22.338609504723696,3373
+FedProxyProx,PIGS,dir1.0,0,0.0001,143
+FedProxyProx,PIGS,dir1.0,1,0.046997399030772,9
+FedProxyProx,PIGS,dir1.0,5,0.8859603851260258,1
+FedProxyProx,PIGS,dir1.0,10,4.033883459067592,201
+FedProxyProx,PIGS,dir1.0,20,22.762133770489832,209
+AccExtraGrad,Acc. ExtraGrad,dir1.0,0,0.0001,355
+AccExtraGrad,Acc. ExtraGrad,dir1.0,1,0.047002713282542005,123
+AccExtraGrad,Acc. ExtraGrad,dir1.0,5,1.169167233741424,3
+AccExtraGrad,Acc. ExtraGrad,dir1.0,10,4.2170739811183555,459
+AccExtraGrad,Acc. ExtraGrad,dir1.0,20,25.637336330533188,479
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir1.0,0,0.0001,191
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir1.0,1,0.130048735891428,9
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir1.0,5,1.4337010499240301,1
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir1.0,10,5.537743805337094,203
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir1.0,20,36.13516915571704,217
+moDSGD,D-GD,dir5.0,0,0.0001,2414
+moDSGD,D-GD,dir5.0,1,0.01584970005172802,339
+moDSGD,D-GD,dir5.0,5,0.24334851655380202,13
+moDSGD,D-GD,dir5.0,10,0.8802603309633139,2
+moDSGD,D-GD,dir5.0,20,4.522640824419458,3373
+FedProxyProx,PIGS,dir5.0,0,0.0001,31
+FedProxyProx,PIGS,dir5.0,1,0.016079064645102014,10
+FedProxyProx,PIGS,dir5.0,5,0.246869952869618,2
+FedProxyProx,PIGS,dir5.0,10,0.893318486589364,1
+FedProxyProx,PIGS,dir5.0,20,4.606009047252376,36
+AccExtraGrad,Acc. ExtraGrad,dir5.0,0,0.0001,367
+AccExtraGrad,Acc. ExtraGrad,dir5.0,1,0.01608027165857202,171
+AccExtraGrad,Acc. ExtraGrad,dir5.0,5,0.24688093542771203,15
+AccExtraGrad,Acc. ExtraGrad,dir5.0,10,1.168203979844066,3
+AccExtraGrad,Acc. ExtraGrad,dir5.0,20,5.380063995939706,547
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir5.0,0,0.0001,151
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir5.0,1,0.01608084756467602,59
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir5.0,5,0.24688126533944205,5
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir5.0,10,0.893433492571318,1
+AccExtraGradProx,Acc. ExtraGrad + Prox,dir5.0,20,4.606703539568574,211

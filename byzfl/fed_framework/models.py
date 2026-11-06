@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Dimension of the synthetic linear-regression model. Set by byzfl.benchmark.train (for the
+# "synth_linreg" dataset) BEFORE any `linreg()` is instantiated, since the model registry builds
+# models by name with no arguments (see ModelBaseInterface.__init__).
+LINREG_DIM = 1
+
 """
 Models Module
 =============
@@ -177,6 +182,30 @@ class logreg_mnist(nn.Module):
         x = x.view(x.size(0), -1)
         logits = self._linear(x)
         return F.log_softmax(logits, dim=1)
+
+class linreg(nn.Module):
+    """Linear-regression model for the synthetic controlled-quadratic testbed.
+
+    A single bias-free linear layer x -> X x, so the d parameters are exactly the optimization
+    variable in R^d. The input dimension is read from the module-level ``LINREG_DIM``, which
+    ``byzfl.benchmark.train`` sets from the problem spec before the model is built.
+
+    Examples
+    --------
+    >>> import byzfl.fed_framework.models as models
+    >>> models.LINREG_DIM = 8
+    >>> model = models.linreg()
+    >>> x = torch.randn(16, 8)   # a batch of 16 rows
+    >>> model(x).shape
+    torch.Size([16, 1])
+    """
+    def __init__(self):
+        super().__init__()
+        self._linear = nn.Linear(LINREG_DIM, 1, bias=False)
+
+    def forward(self, x):
+        return self._linear(x)
+
 
 # ---------------------------------------------------------------------------- #
 
