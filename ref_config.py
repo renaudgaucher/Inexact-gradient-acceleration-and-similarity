@@ -24,7 +24,7 @@ def make_ref_config(config, steps_multiplier=1, same_algs=True):
                     "momentum": [0.],
                     "optimizer_parameters": { 
                                 },
-                    "learning_rate": [1., 2., 4., 8.],# oldies [1.,2.,4.,8.,16.] [0.1,0.5,1.,2.,4.,8.,16.,32.,64.], #[0.025,0.05,0.1,0.25,0.5],#,0.75,1.0],
+                    "learning_rate": [1., 2., 4., 8.],
                     "learning_rate_decay": 1.0,
                     "milestones": []
                     }

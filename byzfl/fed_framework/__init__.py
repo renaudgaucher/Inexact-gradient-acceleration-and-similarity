@@ -5,7 +5,7 @@ from .models import *
 from .model_base_interface import ModelBaseInterface
 
 # Import other independent utilities
-from .data_distributor import DataDistributor
+from .data_distributor import DataDistributor, CachedDataset, LazyCachedDataset
 
 # Import robust aggregator before server
 from .robust_aggregator import RobustAggregator

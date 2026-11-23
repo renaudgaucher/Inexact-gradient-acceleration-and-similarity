@@ -68,6 +68,9 @@ def divide(tensor1, tensor2):
 def max(vectors):
 	return torch.max(vectors)
 
+def min(vectors, axis=0):
+	return torch.min(vectors, dim=axis)
+
 def asarray(l):
 	dtype = type(l[0])
 	return torch.as_tensor(l, dtype=dtype)
@@ -110,6 +113,12 @@ def rand(vector):
 def subtract(vector1, vector2):
 	return torch.subtract(vector1, vector2)
 
+def expand_dims(vector, axis):
+	return torch.unsqueeze(vector, dim=axis)
+
+def norm(vector, axis):
+	return linalg.norm(vector, dim=axis)
+
 #Sample size elements from a Gaussian distribution of mean loc and standard deviation scale. 
-def normal(loc=0, scale=1, size=1):
-	return torch.randn(size) * scale + loc
+def normal(loc=0, scale=1, size=1, device=None, dtype=None):
+	return torch.randn(size, device=device, dtype=dtype) * scale + loc

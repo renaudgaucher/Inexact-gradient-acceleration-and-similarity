@@ -2,8 +2,6 @@ numpy
 matplotlib
 scipy
 seaborn
-
-
 torch
 torchvision
 pytest

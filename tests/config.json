@@ -1,0 +1,74 @@
+{
+    "benchmark_config": {
+        "device": "cpu",
+        "training_seed": 0,
+        "nb_training_seeds": 1,
+        "nb_honest_clients": 10,
+        "f": 1,
+        "size_train_set": 0.8,
+        "data_distribution_seed": 0,
+        "nb_data_distribution_seeds": 1,
+        "data_distribution": [
+            {
+                "name": "gamma_similarity_niid",
+                "distribution_parameter": 0.0
+            }
+        ],
+        "training_algorithm": {
+            "name": "FedProxyProx",
+            "parameters": {
+                "l2_regularization": 0.01,
+                "prox_step_size": 0.1
+            }
+        },
+        "nb_steps": 20
+    },
+    "model": {
+        "name": "logreg_mnist",
+        "dataset_name": "mnist",
+        "nb_labels": 10,
+        "loss": "NLLLoss",
+        "learning_rate": 0.1,
+        "learning_rate_decay": 1.0,
+        "milestones": []
+    },
+    "aggregator": [
+        {
+            "name": "GeometricMedian",
+            "parameters": {
+                "nu": 0.1,
+                "T": 3
+            }
+        }
+    ],
+    "pre_aggregators": [
+        {
+            "name": "Clipping",
+            "parameters": {}
+        },
+        {
+            "name": "NNM",
+            "parameters": {}
+        }
+    ],
+    "honest_clients": {
+        "momentum": 0.0,
+        "weight_decay": 0.0001,
+        "batch_size": 0
+    },
+    "attack": [
+        {
+            "name": "Optimal_InnerProductManipulation",
+            "parameters": {}
+        }
+    ],
+    "evaluation_and_results": {
+        "evaluation_delta": 50,
+        "batch_size_evaluation": 256,
+        "evaluate_on_test": true,
+        "store_per_client_metrics": true,
+        "store_models": false,
+        "data_folder": "./data",
+        "results_directory": "./results"
+    }
+}

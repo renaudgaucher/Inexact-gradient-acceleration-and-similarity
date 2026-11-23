@@ -4,10 +4,9 @@
         "device": "cpu",
         "training_seed": 0,
         "nb_training_seeds": 1,
-        "nb_honest_clients": 20,
+        "nb_honest_clients": 40,
         "f": [
-            1,
-            5
+            0
         ],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
@@ -18,26 +17,27 @@
                 "distribution_parameter": [
                     null
                 ]
+            },
+            {
+                "name": "dirichlet_niid",
+                "distribution_parameter": [
+                    0.1
+                ]
+            },
+            {
+                "name": "dirichlet_niid",
+                "distribution_parameter": [
+                    1.0
+                ]
+            },
+            {
+                "name": "dirichlet_niid",
+                "distribution_parameter": [
+                    5.0
+                ]
             }
         ],
         "training_algorithm": [
-            {
-                "name": "DSGD",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.9
-                    ],
-                    "optimizer_parameters": {
-                        "nesterov": true
-                    },
-                    "learning_rate": [
-                        0.1
-                    ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
-                }
-            },
             {
                 "name": "moDSGD",
                 "parameters": {
@@ -47,34 +47,14 @@
                     ],
                     "optimizer_parameters": {},
                     "learning_rate": [
-                        0.1
-                    ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
-                }
-            },
-            {
-                "name": "FedProxyProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.0
-                    ],
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        32.0,
-                        16.0,
-                        8.0,
-                        4.0,
-                        2.0,
-                        1.0
-                    ],
-                    "learning_rate_decay": 1.0,
-                    "milestones": []
+                        0.05,
+                        0.1,
+                        0.5
+                    ]
                 }
             }
         ],
-        "nb_steps": 500
+        "nb_steps": 1000
     },
     "model": {
         "name": "logreg_mnist",
@@ -82,41 +62,32 @@
         "nb_labels": 10,
         "loss": "NLLLoss",
         "weight_decay": [
-            0.001
+            0.01
         ]
     },
     "aggregator": [
         {
-            "name": "TrMean",
+            "name": "Huber",
             "parameters": {}
         }
     ],
-    "pre_aggregators": [
-        {
-            "name": "NNM",
-            "parameters": {}
-        }
-    ],
+    "pre_aggregators": [],
     "honest_clients": {
         "batch_size": 0
     },
     "attack": [
-        {
-            "name": "Optimal_InnerProductManipulation",
-            "parameters": {}
-        },
         {
             "name": "Optimal_ALittleIsEnough",
             "parameters": {}
         }
     ],
     "evaluation_and_results": {
-        "evaluation_delta": 2,
+        "evaluation_delta": 100,
         "batch_size_evaluation": 64,
-        "evaluate_on_test": true,
-        "store_per_client_metrics": true,
+        "evaluate_on_test": false,
+        "store_per_client_metrics": false,
         "store_models": false,
         "data_folder": "./data",
-        "results_directory": "./results/mnist_logreg_iid_2"
+        "results_directory": "./results/mnist_alie/tune_gd"
     }
 }

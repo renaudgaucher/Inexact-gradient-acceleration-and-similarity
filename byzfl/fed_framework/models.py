@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Dimension of the synthetic linear-regression model. Set by byzfl.benchmark.train (for the
+# "synth_linreg" dataset) BEFORE any `linreg()` is instantiated, since the model registry builds
+# models by name with no arguments (see ModelBaseInterface.__init__).
+LINREG_DIM = 1
+
 """
 Models Module
 =============
@@ -51,6 +56,12 @@ Available Models
    - **Description**: Another small convolutional network for CIFAR datasets.
    - **Input Shape**: `3 x 32 x 32`.
    - **Output Classes**: 10.
+
+4. **'smallcnn_cifar'**
+    - **Type**: Convolutional neural network.
+    - **Description**: A small convolutional neural network for CIFAR datasets, designed to be efficient and effective.
+    - **Input Shape**: `3 x 32 x 32`.
+    - **Output Classes**: 10.
 
 ### ResNet Models
 
@@ -172,7 +183,61 @@ class logreg_mnist(nn.Module):
         logits = self._linear(x)
         return F.log_softmax(logits, dim=1)
 
+class linreg(nn.Module):
+    """Linear-regression model for the synthetic controlled-quadratic testbed.
+
+    A single bias-free linear layer x -> X x, so the d parameters are exactly the optimization
+    variable in R^d. The input dimension is read from the module-level ``LINREG_DIM``, which
+    ``byzfl.benchmark.train`` sets from the problem spec before the model is built.
+
+    Examples
+    --------
+    >>> import byzfl.fed_framework.models as models
+    >>> models.LINREG_DIM = 8
+    >>> model = models.linreg()
+    >>> x = torch.randn(16, 8)   # a batch of 16 rows
+    >>> model(x).shape
+    torch.Size([16, 1])
+    """
+    def __init__(self):
+        super().__init__()
+        self._linear = nn.Linear(LINREG_DIM, 1, bias=False)
+
+    def forward(self, x):
+        return self._linear(x)
+
+
 # ---------------------------------------------------------------------------- #
+
+class smallcnn_cifar(torch.nn.Module):
+	def __init__(self, num_classes=10):
+		super(SmallCNN, self).__init__()
+		self.conv1 = torch.nn.Conv2d(3, 32, kernel_size=3, padding=1)
+		self.bn1 = torch.nn.BatchNorm2d(32)
+		self.conv2 = torch.nn.Conv2d(32, 64, kernel_size=3, padding=1)
+		self.bn2 = torch.nn.BatchNorm2d(64)
+		self.conv3 = torch.nn.Conv2d(64, 128, kernel_size=3, padding=1)
+		self.bn3 = torch.nn.BatchNorm2d(128)
+
+		self.pool = torch.nn.MaxPool2d(2, 2)
+		self.dropout = torch.nn.Dropout(0.3)
+
+		self.fc1 = torch.nn.Linear(128 * 4 * 4 * 4, 128)
+		self.fc2 = torch.nn.Linear(128, num_classes)
+		self.logsoftmax = F.log_softmax
+    
+	def forward(self, x):
+		x = self.pool(F.relu(self.bn1(self.conv1(x))))
+		x = self.pool(F.relu(self.bn2(self.conv2(x))))
+		x = self.dropout(F.relu(self.bn3(self.conv3(x))))
+
+		x = x.view(x.size(0), -1)  # Flatten
+		x = F.relu(self.fc1(x))
+		x = self.dropout(x)
+		x = self.fc2(x)
+		x = self.logsoftmax(x, dim=1)
+		return x
+
 
 class cnn_cifar(nn.Module):
     """

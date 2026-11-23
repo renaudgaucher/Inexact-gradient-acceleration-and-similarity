@@ -760,7 +760,7 @@ class CenteredClipping(object):
            International Conference on Machine Learning (ICML), 2021.
     """
 
-    def __init__(self, m=None, L=1, tau=100.0):
+    def __init__(self, m=None, L=1, tau=1.0):
         if m is not None and (not isinstance(m, np.ndarray) or not isinstance(m, torch.Tensor)):
             raise TypeError("m must be of type np.ndarray or torch.Tensor")
         self.m = m
@@ -1482,3 +1482,86 @@ class SMEA(object):
 
         selected_subset = compute_min_subset(vectors, dimension, n, self.f)
         return vectors[tools.asarray(selected_subset)].mean(axis=0)
+
+
+
+class Huber(object):
+    
+    r"""
+    Description
+    -----------
+
+    Apply the Multivariate Huber estimator:
+
+    Initialization parameters
+    --------------------------
+    m : numpy.ndarray, torch.Tensor, optional
+        Initial value of the CenteredClipping aggregator.
+        Default (None) makes it start from zero, a vector with all its coordinates equal to 0.
+    f : int, optional
+        Number of faulty vectors. Set to 0 by default.
+
+    Calling the instance
+    --------------------
+
+    Input parameters
+    ----------------
+    vectors: numpy.ndarray, torch.Tensor, list of numpy.ndarray or list of torch.Tensor
+        A set of vectors, matrix or tensors.
+        
+    Returns
+    -------
+    :numpy.ndarray or torch.Tensor
+        The data type of the output will be the same as the input.
+
+    Note
+    ----
+
+        If the instance is called more than once, the value of \\(m\\) used in
+        the next call is equal to the output vector of the previous call.
+
+    Note
+    ----
+        
+        In case the optional parameter \\(m\\) is specified when initializing 
+        the instance, \\(m\\) has to be of the same type and shape as the input
+        vectors \\(\\{x_1, \\dots, x_n\\}\\) used when calling the instance.
+
+    """
+
+    def __init__(self, m=None,f=0, L=5):
+        if m is not None and (not isinstance(m, np.ndarray) or not isinstance(m, torch.Tensor)):
+            raise TypeError("m must be of type np.ndarray or torch.Tensor")
+        self.m = m
+        if not isinstance(f, int) or f < 0:
+            raise ValueError("f must be a non-negative integer")
+        self.f = f
+        if not isinstance(L, int) or L < 0:
+            raise ValueError("L must be a non-negative integer")
+        self.L = L
+
+    def __call__(self, vectors):
+        tools, vectors = check_vectors_type(vectors)
+
+        if self.m is None:
+            self.m = tools.zeros_like(vectors[0]).to(vectors[0].device)
+        v = self.m
+        n = len(vectors)
+        k = -min(n, 2*self.f)
+        for _ in range(self.L):
+            differences = vectors - v
+            distances = tools.sum(differences**2, axis = -1)**0.5
+            distances = distances + 1e-8 * (distances < 1e-8)
+            sorted_dist = tools.sort(distances)
+            clip_threshold = sorted_dist[k]
+
+            clip_factor = clip_threshold / distances
+            clip_factor = tools.minimum(tools.ones_like(clip_factor), clip_factor)
+            differences = tools.multiply(differences, clip_factor.reshape(-1,1))
+            v_new = tools.add(v, tools.mean(differences, axis=0))
+            if tools.sum((v_new - v)**2)**0.5 < 1e-6:
+                break
+            v = v_new
+        
+        return v
+

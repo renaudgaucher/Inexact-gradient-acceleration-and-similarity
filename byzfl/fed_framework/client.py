@@ -16,7 +16,7 @@ class Client(ModelBaseInterface):
             raise TypeError(f"'LabelFlipping' must be of type bool, but got {type(params['LabelFlipping']).__name__}")
         if not isinstance(params["nb_labels"], int) or not params["nb_labels"] > 1:
             raise ValueError(f"'nb_labels' must be an integer greater than 1")
-        if not isinstance(params["momentum"], float) or not 0 <= params["momentum"] < 1:
+        if not isinstance(params["momentum"], float) or not 0 <= params["momentum"]:#< 1:
             raise ValueError(f"'momentum' must be a float in the range [0, 1)")
         if not isinstance(params["training_dataloader"], torch.utils.data.DataLoader):
             raise TypeError(f"'training_dataloader' must be a DataLoader, but got {type(params['training_dataloader']).__name__}")
@@ -280,8 +280,14 @@ class ProxClient(Client):
 
         """
         super().__init__(params)
-        self.prox_step_size = params.get("prox_step_size", 0.1)
+        self.prox_step_size = params.get("prox_step_size", self.learning_rate)
         self.l2_regularization = params.get("weight_decay", 0.)
+        self.prox_optimizer_name = params.get(
+            "prox_optimizer_name",
+            params.get("prox_optimizer_name", "SGD")
+        )
+        self.prox_optimizer_params = params.get("prox_optimizer_params", {})
+        self.nb_iter_gd =  self.prox_optimizer_params.get("nb_iter", 1000)
     
 
     def get_flatten_params(self):
@@ -292,7 +298,7 @@ class ProxClient(Client):
     
     def proximal_objective(
         self, inputs, targets,
-        grad_h_tilde,   # fixed flat tensor
+        grad_forward,   # fixed flat tensor
         ref_params     # list of tensors
     ):
         # training loss g(θ)
@@ -305,16 +311,16 @@ class ProxClient(Client):
 
         # linear rectification <∇h̃(x_k), θ>
         theta_flat = self.get_flatten_params()
-        linear_term = torch.dot(grad_h_tilde, theta_flat) 
+        linear_term = torch.dot(grad_forward, theta_flat) 
 
         # (1 / 2η) ||θ - θ_k||²
         prox_term = 0.0
         for p, p0 in zip(self.model.parameters(), ref_params):
-            prox_term += torch.sum((p - p0) ** 2) *0.5        
+            prox_term += torch.sum((p - p0) ** 2) *0.5
 
         return (linear_term + g_theta) + prox_term / self.prox_step_size
 
-    def compute_model_prox_update(self, grad_h_tilde, verbose=False):
+    def compute_model_prox_update(self, grad_forward, verbose=False):
         """
         Description
         -----------
@@ -322,92 +328,115 @@ class ProxClient(Client):
         approximate gradient of the non-local function. The update based on LBFGS.
         Parameters
         ----------
-        grad_h_tilde : torch.Tensor
-            A flat tensor representing the approximate gradient of the non-local function.
+        grad_forward : torch.Tensor
+            A flat tensor representing the forward gradient.
+        method : str
+            The optimization method to use for the proximal update.
+        verbose : bool
+            Whether to print verbose output during the optimization process.
         num_rounds_max : int
             The maximum number of optimization rounds to perform for the proximal update.
         """
         # self.set_model_state(prox_parameters)
-        ref_params = self.get_reference_params()
-        grad_h_tilde = grad_h_tilde.detach()
+        ref_params = self.get_reference_params() # self.get_flat_parameters().clone().detach()
+        flat_ref_params = torch.cat([p.view(-1) for p in ref_params])
+        grad_forward = grad_forward.detach()
 
-        optimizer = torch.optim.LBFGS(
-            self.model.parameters(), lr=0.8, history_size=500, line_search_fn='strong_wolfe',
-            max_iter=2000, max_eval=20000,tolerance_grad=1e-13, tolerance_change=1e-32
-            )
         
         inputs, targets = self._sample_train_batch()
         inputs, targets = inputs.to(self.device), targets.to(self.device)
-        
-        def closure():
-            optimizer.zero_grad()
-            loss = self.proximal_objective(
-                inputs=inputs,
-                targets=targets,
-                grad_h_tilde=grad_h_tilde,
-                ref_params=ref_params
+
+        if self.prox_optimizer_name == "LBFGS":
+            # optimizer = torch.optim.LBFGS(
+            #     self.model.parameters(), lr=0.8, line_search_fn='strong_wolfe'
+            #     )
+            optimizer = torch.optim.LBFGS(
+            self.model.parameters(), lr=0.8, history_size=500, line_search_fn='strong_wolfe',
+            max_iter=2000, max_eval=20000,tolerance_grad=1e-13, tolerance_change=1e-32
             )
-            loss.backward()
-            return loss
-        
-        optimizer.step(closure)
-
-        last_loss = closure().item()
-        last_grad_norm = self.get_flat_gradients().norm().item()**2.
-        if verbose==1:
-            optimizer.zero_grad()
-            print(f"lr {self.prox_step_size} BFGS prox_loss: " + str(last_loss) + \
-                      "prox gradients norm: " + str(last_grad_norm))
-        
-        return last_loss, last_grad_norm
-        # optimizer = torch.optim.SGD(
-        #     self.model.parameters(), lr=.1, 
-        # )
-        
-        # iter_gd = 200
-        # scheduler = torch.optim.lr_scheduler.PolynomialLR(
-        #         optimizer,
-        #         total_iters=iter_gd,
-        #         power=0.5
-        #     )
-        
-        # inputs, targets = self._sample_train_batch()
-        # inputs, targets = inputs.to(self.device), targets.to(self.device)
-        
-        # for i in range(iter_gd):
             
-        #     optimizer.zero_grad()
-        #     loss = self.proximal_objective(
-        #         inputs=inputs,
-        #         targets=targets,
-        #         grad_h_tilde=grad_h_tilde,
-        #         ref_params=ref_params
-        #     )
-        #     loss.backward()
-        #     optimizer.step()
-        #     scheduler.step()
-        #     if i==0 and verbose==1:
-        #         print(".  Iteration " + str(i) + " prox_loss: " + str(loss.item()) + \
-        #               "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-        #     if loss < 1e-8:
-        #         break
-        # if verbose==1:
-        #     print(f"lr {self.prox_step_size}  Iteration " + str(i) + " prox_loss: " + str(loss.item()) + \
-        #               "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
+            def closure():
+                optimizer.zero_grad()
+                loss = self.proximal_objective(
+                    inputs=inputs,
+                    targets=targets,
+                    grad_forward=grad_forward,
+                    ref_params=ref_params
+                )
+                loss.backward()
+                return loss
+            
+            optimizer.step(closure)
 
-
+            last_loss = closure().item()
+            last_grad_norm = self.get_flat_gradients().norm().item()**2.            
+            distance = self.get_flat_parameters().sub(flat_ref_params).norm().item()**2
         
+            if last_grad_norm >  distance / (self.prox_step_size**2 * 4):
+                if verbose==1:
+                    print(f"WARNING prox_stopped w.o criterion satisfied: grad norm vs step {last_grad_norm} !< {distance / (self.prox_step_size**2 * 4)}"\
+                      " prox loss " + str(last_loss))
+            
+            return last_loss, last_grad_norm
         
+        if self.prox_optimizer_name == "SGD":
+            self.prox_optimizer_lr = self.prox_optimizer_params.get("learning_rate", self.prox_step_size)
+            self.prox_optimizer_lr = min(self.prox_optimizer_lr, self.prox_step_size/4)
+            optimizer = torch.optim.SGD(
+                self.model.parameters(), lr=self.prox_optimizer_lr, 
+            )
+
+            security_factor = self.prox_optimizer_params.get("security_factor", 1.)
+            patience =  self.prox_optimizer_params.get("patience", True)
+
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.998)
+            for i in range(self.nb_iter_gd):
+                
+                optimizer.zero_grad()
+                loss = self.proximal_objective(
+                    inputs=inputs,
+                    targets=targets,
+                    grad_forward=grad_forward,
+                    ref_params=ref_params
+                )
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+
+                optimizer.zero_grad()
+                current_loss = self.proximal_objective(
+                    inputs=inputs,
+                    targets=targets,
+                    grad_forward=grad_forward,
+                    ref_params=ref_params
+                )
+                current_loss.backward()
+                grad_norm = self.get_flat_gradients().norm().item()**2.
+                distance = self.get_flat_parameters().sub(flat_ref_params).norm().item()**2
+                if grad_norm <  distance / (self.prox_step_size**2 * 4 * security_factor) or grad_norm < 1e-10:
+                    return current_loss.item(), grad_norm
+
+                if (i==0 or i == self.nb_iter_gd - 1) and verbose==2:
+                    print(".  Iteration " + str(i) + " prox_loss: " + str(current_loss.item()) + \
+                        "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
+                if (i == self.nb_iter_gd - 1):
+                    print(f"WARNING prox_stopped w.o criterion satisfied: grad norm vs step {grad_norm} !< {distance / (self.prox_step_size**2 * 4 * security_factor)}"\
+                      " prox loss " + str(current_loss.item()))
+                    if self.nb_iter_gd > 100 and not patience:
+                        self.nb_iter_gd = int(self.nb_iter_gd * (0.1**0.01))
+                    else:
+                        self.nb_iter_gd = 100
+                        # self.prox_optimizer_name = "LBFGS"
+                        ## Fatigue: to prevent the usage of SGD when the prox never converge, reduce
+                        # the number of iterations every time the prox does not converge, then go to bfgs
+                    
+            
+                last_loss = current_loss.item()
+            last_grad_norm = self.get_flat_gradients().norm().item()**2.
+
+            return last_loss, last_grad_norm
+
+        raise ValueError(f"Prox optimizer {self.prox_optimizer_name} is not supported, supported optimizers are 'LBFGS' and 'SGD'")
+            
         
-        # if verbose==1:
-        #     print("Starting Proximal Update")
-        #     loss = closure()
-        #     print("   prox_loss: " + str(loss.item()) + "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
-
-        # optimizer.step(closure)
-
-        # if verbose==1:
-        #     print("Finished Proximal Update...")
-        #     loss = closure()
-        #     print("   prox_loss: " + str(loss.item()) + "prox gradients norm: " + str(self.get_flat_gradients().norm().item()))
         

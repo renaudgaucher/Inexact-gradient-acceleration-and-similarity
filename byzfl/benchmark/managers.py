@@ -175,7 +175,9 @@ class ParamsManager(object):
                 "store_per_client_metrics": self.get_store_per_client_metrics(),
                 "store_models": self.get_store_models(),
                 "data_folder": self.get_data_folder(),
-                "results_directory": self.get_results_directory()
+                "results_directory": self.get_results_directory(),
+                "cache_test": self.get_cache_test(),
+                "cache_train": self.get_cache_train()
             }
         }
 
@@ -328,6 +330,21 @@ class ParamsManager(object):
     def get_prox_step_size(self):
         default = self.get_learning_rate()
         path = ["benchmark_config", "training_algorithm", "parameters", "prox_step_size"]
+        read = self._read_object(path)
+        return self._parameter_to_use(default, read)
+    
+    def get_prox_optimizer_name(self):
+        default = "SGD"
+        path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizer_name"]
+        read = self._read_object(path)
+        if read is None:
+            path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizaer_name"]
+            read = self._read_object(path)
+        return self._parameter_to_use(default, read)
+   
+    def get_prox_optimizer_params(self):
+        default = {}
+        path = ["benchmark_config", "training_algorithm", "parameters", "prox_optimizer_params"]
         read = self._read_object(path)
         return self._parameter_to_use(default, read)
 
@@ -494,5 +511,17 @@ class ParamsManager(object):
     def get_results_directory(self):
         default = "./results"
         path = ["evaluation_and_results", "results_directory"]
+        read = self._read_object(path)
+        return self._parameter_to_use(default, read)
+    
+    def get_cache_test(self):
+        default = True
+        path = ["evaluation_and_results", "cache_evaluation"]
+        read = self._read_object(path)
+        return self._parameter_to_use(default, read)
+    
+    def get_cache_train(self):
+        default = True
+        path = ["evaluation_and_results", "cache_train"]
         read = self._read_object(path)
         return self._parameter_to_use(default, read)

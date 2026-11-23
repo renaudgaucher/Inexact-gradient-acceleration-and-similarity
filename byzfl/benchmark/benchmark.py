@@ -1,5 +1,6 @@
 import json
 from multiprocessing import Pool, Value
+import traceback
 import os
 import copy
 
@@ -220,12 +221,24 @@ def run_training(params):
     params : dict
         A dictionary containing all necessary parameters for the training job.
     """
-    print(params["attack"]['name'], params["aggregator"]['name'], params["benchmark_config"]['f'], 
-          params["benchmark_config"]['data_distribution']['name'], params['benchmark_config']['training_algorithm']['name'],)
-    start_training(params)
-    with counter.get_lock():
-        print(f"Training {counter.value} done")
-        counter.value += 1
+    print(params["attack"]['name'],  params["aggregator"]['name'], params["benchmark_config"]['f'], 
+    params['benchmark_config']['training_algorithm']['name'],params['benchmark_config']['training_algorithm']['parameters']['learning_rate']) #params.get("pre_aggregators",[{'name': 'none'}])[0]['name'],
+    
+    # result = start_training(params)
+    # with counter.get_lock():
+    #     print(f"Training {counter.value} done")
+    #     counter.value += 1
+    
+    try:
+        result = start_training(params)
+        with counter.get_lock():
+            print(f"Training {counter.value} done")
+            counter.value += 1
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+    
+    
 
 def eliminate_experiments_done(dict_list):
     """
@@ -591,9 +604,18 @@ def run_benchmark(nb_jobs=1, config_name='config.json'):
     
     counter = Value('i', 0)
     with Pool(initializer=init_pool_processes, initargs=(counter,), processes=nb_jobs) as pool:
-        pool.map(run_training, dict_list)
-
+        results=pool.map(run_training, dict_list)
+    
     print("All trainings finished.")
+    
+    
+    # Print errors if any
+    for i, result in enumerate(results):
+        if not result["success"]:
+            print(f"Job {i} failed with error: {result['error']}")
+            print(f"Traceback:\n{result['traceback']}")
+            
+    
 
     if float(data["benchmark_config"]["size_train_set"]) == 1.0:
         print("No hyperparameter exploration done.")
