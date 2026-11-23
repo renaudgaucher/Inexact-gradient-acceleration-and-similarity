@@ -6,16 +6,30 @@
         "nb_training_seeds": 1,
         "nb_honest_clients": 40,
         "f": [
-            0,
-            1,
-            5,
-            10,
-            20
+            0
         ],
         "size_train_set": 0.8,
         "data_distribution_seed": 0,
         "nb_data_distribution_seeds": 1,
         "data_distribution": [
+            {
+                "name": "iid",
+                "distribution_parameter": [
+                    null
+                ]
+            },
+            {
+                "name": "dirichlet_niid",
+                "distribution_parameter": [
+                    0.1
+                ]
+            },
+            {
+                "name": "dirichlet_niid",
+                "distribution_parameter": [
+                    1.0
+                ]
+            },
             {
                 "name": "dirichlet_niid",
                 "distribution_parameter": [
@@ -33,66 +47,14 @@
                     ],
                     "optimizer_parameters": {},
                     "learning_rate": [
-                        0.1
-                    ]
-                }
-            },
-            {
-                "name": "FedProxyProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "momentum": [
-                        0.0
-                    ],
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        10.0
-                    ],
-                    "prox_optimizer_name": "SGD",
-                    "prox_optimizer_params": {
-                        "learning_rate": 0.05,
-                        "security_factor": 10
-                    }
-                }
-            },
-            {
-                "name": "AccExtraGradProx",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "optimizer_parameters": {},
-                    "learning_rate": [
+                        0.05,
+                        0.1,
                         0.5
-                    ],
-                    "momentum": [
-                        0.01
-                    ],
-                    "tau_factor": 1,
-                    "fast_lr_factor": 1,
-                    "prox_optimizer_name": "SGD",
-                    "prox_optimizer_params": {
-                        "learning_rate": 0.05,
-                        "security_factor": 10,
-                        "patience": true
-                    }
-                }
-            },
-            {
-                "name": "AccExtraGrad",
-                "parameters": {
-                    "optimizer_name": "SGD",
-                    "optimizer_parameters": {},
-                    "learning_rate": [
-                        0.1
-                    ],
-                    "momentum": [
-                        0.01
-                    ],
-                    "tau_factor": 1,
-                    "fast_lr_factor": 1.0
+                    ]
                 }
             }
         ],
-        "nb_steps": 5000
+        "nb_steps": 1000
     },
     "model": {
         "name": "logreg_mnist",
@@ -126,6 +88,6 @@
         "store_per_client_metrics": false,
         "store_models": false,
         "data_folder": "./data",
-        "results_directory": "./results/mnist_alie/prod/dir5.0"
+        "results_directory": "./results/mnist_alie/tune_gd"
     }
 }

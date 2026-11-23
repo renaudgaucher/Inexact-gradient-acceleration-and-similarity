@@ -48,7 +48,7 @@ dict_datasets = {
 # 4: x_fast = x_fast - fast_lr * nabla f(x_slow) + momentum * (x_slow - x_avg)
 
 # - gamma: 'momentum/fast_lr' term, in theory set as $\gamma=\mu$ (strong convexity)
-# - slow_lr: proximal step size, in theory set as $slow_lr= 1/(2L_p)$
+# - slow_lr: proximal step size, in theory set as $slow_lr= 1/(2 smoothness p)$
 # - tau: extrapolation parameter. 
 #     Theory can be set (without byz) as 
 #         \tau = (slow_lr * gamma/2)**0.5
@@ -57,7 +57,7 @@ dict_datasets = {
 #     or fast_lr = (slow_lr / (2*gamma) )**0.5
 
 
-# Equivalent Algorithm without division by momentum
+# Equivalent Algorithm without dividing by momentum
 # 1: x_avg = x_fast_tau + (1-tau)(x_slow)
 # 2: grad_forward = nabla f(x_avg)
 # 3: x_slow = argmin_x { <grad_forward, x> + (1/2 slow_lr)||x - x_avg||^2  + q(x)}
@@ -66,41 +66,18 @@ dict_datasets = {
 # \tau = momentum
 
 
-# 1
-
 # Choice of the configuration (based on the non-byzantine theory):
-# 1. Tune slow_lr and momentum
-# 2. set tau = momentum (/2 in the byzantine case?)
-# 3. set fast_lr = slow_lr / momentum (/4 in the non byzantine case by thr)
+# 1. Tune slow_lr
+# 2. Set gamma as the weight decay
+# 3. set tau = min(1, tau_factor*sqrt(slow_lr * gamma/2))
+# 4. set fast_lr = min(1/2 gamma, fast_lr_factor*slow_lr/(2*tau))
+# where fast_lr_factor and tau_factor are by default 1 and can be used for tunning
 
-# Note: \theta should be approximately the same as the one for ProxyProx, 
 # \gamma should be approximately the strong convexity (e.g. weight decay).
-# NB: gamma parametrized through 'momentum' input, for simplicity
+# however, gamma is parametrized through 'momentum' input, for simplicity
 # """
 
-SYNTH_DATASET_NAME = "synth_linreg"
 
-
-def _prepare_synthetic(params, nb_honest_clients, seed, device):
-    """Build the controlled-quadratic per-client dataloaders and the global Hessian.
-
-    Reads the problem spec from ``params["synthetic"]`` (d, mu, kappa, rho, G, lam), regenerates the
-    deterministic problem for the given seed, sets ``models.LINREG_DIM`` so ``linreg`` is built with
-    the right dimension, and returns:
-      - client_dataloaders : list of full-batch DataLoaders, one per honest client;
-      - Abar               : the global Hessian as a torch tensor (for exact suboptimality).
-    The proxy L_hat = L_1 is client index 0 (the max-perturbation client, see synthetic.py).
-    """
-    spec = params["synthetic"]
-    models.LINREG_DIM = int(spec["d"])
-    Xs, ys, info = build_controlled_quadratic(spec, nb_honest_clients, seed=seed)
-    tensors = make_client_tensors(Xs, ys, device=device, dtype=torch.get_default_dtype())
-    client_dataloaders = [
-        DataLoader(TensorDataset(x, y), batch_size=len(x), shuffle=False)
-        for (x, y) in tensors
-    ]
-    Abar = torch.as_tensor(info["Abar"], dtype=torch.get_default_dtype(), device=device)
-    return client_dataloaders, Abar, info
 
 
 def start_training(params):
@@ -166,84 +143,72 @@ def start_training(params):
 
     # Data Preparation
     key_dataset_name = params_manager.get_dataset_name()
-    synth = (key_dataset_name == SYNTH_DATASET_NAME)
-    synth_Abar = None
-    synth_info = None
 
-    if synth:
-        # Controlled-quadratic (linear-regression) testbed: no torchvision, no accuracy eval.
-        client_dataloaders, synth_Abar, synth_info = _prepare_synthetic(
-            params, nb_honest_clients, dd_seed, params_manager.get_device())
-        val_loader = None
-        # Server requires a DataLoader for test_loader; synth never evaluates accuracy
-        # (evaluate_on_test=False, eval loop skipped), so reuse a client loader as an unused stand-in.
-        test_loader = client_dataloaders[0]
-    else:
-        dataset_name = dict_datasets[key_dataset_name][0]
-        dataset = getattr(datasets, dataset_name)(
-                root = params_manager.get_data_folder(),
-                train = True,
-                download = True,
-                transform = None
-        )
-        dataset.targets = Tensor(dataset.targets).long()
+    dataset_name = dict_datasets[key_dataset_name][0]
+    dataset = getattr(datasets, dataset_name)(
+            root = params_manager.get_data_folder(),
+            train = True,
+            download = True,
+            transform = None
+    )
+    dataset.targets = Tensor(dataset.targets).long()
 
-        train_size = int(params_manager.get_size_train_set() * len(dataset))
-        val_size = len(dataset) - train_size
+    train_size = int(params_manager.get_size_train_set() * len(dataset))
+    val_size = len(dataset) - train_size
 
-        # Split Train set into Train and Validation
-        train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    # Split Train set into Train and Validation
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-        # Apply transformations + use lazy caching so initialization is faster
-        train_transform = dict_datasets[key_dataset_name][1]
-        val_transform = dict_datasets[key_dataset_name][2]
+    # Apply transformations + use lazy caching so initialization is faster
+    train_transform = dict_datasets[key_dataset_name][1]
+    val_transform = dict_datasets[key_dataset_name][2]
 
-        if params_manager.get_cache_train():
-            train_dataset.dataset = LazyCachedDataset(train_dataset.dataset, transform=train_transform)
-            val_dataset.dataset = LazyCachedDataset(val_dataset.dataset, transform=val_transform)
+    if params_manager.get_cache_train():
+        train_dataset.dataset = LazyCachedDataset(train_dataset.dataset, transform=train_transform)
+        val_dataset.dataset = LazyCachedDataset(val_dataset.dataset, transform=val_transform)
 
-        # Prepare Validation and Test data
+    # Prepare Validation and Test data
 
-        if len(val_dataset) > 0:
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=params_manager.get_batch_size_evaluation(),
-                shuffle=False,
-                pin_memory=torch.cuda.is_available(),
-                num_workers=0,
-                persistent_workers=False
-            )
-        else:
-            val_loader = None
-
-        test_dataset = getattr(datasets, dataset_name)(
-                    root = params_manager.get_data_folder(),
-                    train=False,
-                    download=True,
-                    transform=dict_datasets[key_dataset_name][2],
-        )
-
-        if params_manager.get_cache_test():
-            test_dataset.dataset = LazyCachedDataset(test_dataset)
-
-        test_loader = DataLoader(
-            test_dataset,
+    if len(val_dataset) > 0:
+        val_loader = DataLoader(
+            val_dataset,
             batch_size=params_manager.get_batch_size_evaluation(),
             shuffle=False,
             pin_memory=torch.cuda.is_available(),
             num_workers=0,
             persistent_workers=False
         )
+    else:
+        val_loader = None
 
-        # Distribute data among clients using non-IID Dirichlet distribution
-        data_distributor = DataDistributor({
-            "data_distribution_name": params_manager.get_name_data_distribution(),
-            "distribution_parameter": params_manager.get_parameter_data_distribution(),
-            "nb_honest": nb_honest_clients,
-            "data_loader": train_dataset,
-            "batch_size": batch_size,
-        })
-        client_dataloaders = data_distributor.split_data()
+    test_dataset = getattr(datasets, dataset_name)(
+                root = params_manager.get_data_folder(),
+                train=False,
+                download=True,
+                transform=dict_datasets[key_dataset_name][2],
+    )
+
+    if params_manager.get_cache_test():
+        test_dataset.dataset = LazyCachedDataset(test_dataset)
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=params_manager.get_batch_size_evaluation(),
+        shuffle=False,
+        pin_memory=torch.cuda.is_available(),
+        num_workers=0,
+        persistent_workers=False
+    )
+
+    # Distribute data among clients using non-IID Dirichlet distribution
+    data_distributor = DataDistributor({
+        "data_distribution_name": params_manager.get_name_data_distribution(),
+        "distribution_parameter": params_manager.get_parameter_data_distribution(),
+        "nb_honest": nb_honest_clients,
+        "data_loader": train_dataset,
+        "batch_size": batch_size,
+    })
+    client_dataloaders = data_distributor.split_data()
 
     optimizer_params = params_manager.get_optimizer_params()
     
@@ -305,26 +270,15 @@ def start_training(params):
         "optimizer_name": params_manager.get_optimizer_name(),
         "optimizer_params": optimizer_params,
         "learning_rate": params_manager.get_learning_rate(),
-        # In synth mode the L2 term is already inside each client's loss (Client._backward_pass),
-        # so the aggregated gradient already carries lambda*x. Giving the server optimizer a nonzero
-        # weight_decay would add it a SECOND time (perturbing the exact mu). Keep the server's
-        # weight_decay at 0 for synth so the effective objective is exactly the designed L_H.
-        "weight_decay": 0.0 if synth else params_manager.get_weight_decay(),
+        
+        "weight_decay": params_manager.get_weight_decay(),
         "milestones": params_manager.get_milestones(),
         "learning_rate_decay": params_manager.get_learning_rate_decay(),
         "aggregator_info": params_manager.get_aggregator_info(),
         "pre_agg_list": params_manager.get_preaggregators(),
     })
 
-    if synth:
-        # Start every method from the SAME deterministic x_0 (x* = 0, so this fixes the initial
-        # suboptimality) rather than the framework's per-model random init, which would differ
-        # across methods. Done before the extra-gradient setup reads server.get_flat_parameters().
-        d0 = synth_info["d"]
-        x0 = np.random.default_rng(int(dd_seed) + 1).standard_normal(d0)
-        x0 = torch.as_tensor(x0, dtype=torch.get_default_dtype(),
-                             device=params_manager.get_device())
-        server.set_parameters(x0)
+
 
     # Byzantine Client Setup
 
@@ -360,9 +314,7 @@ def start_training(params):
     test_accuracy_list = np.array([])
     train_loss_list = np.zeros((nb_training_steps))
     prox_loss_list = np.zeros((nb_training_steps,2))
-    # synth: exact suboptimality L_H(x_k) - L* = 0.5 x^T Abar x of the tracked iterate, recorded
-    # per communication round (NaN where a round index is skipped; forward-filled before writing).
-    synth_subopt = np.full(nb_training_steps, np.nan) if synth else None
+
 
     start_time = time.time()
 
@@ -415,20 +367,6 @@ def start_training(params):
         tau = min(1,(slow_step_size*gamma/2)**0.5*tau_factor) # max((slow_step_size/gamma/2)**0.5, 1/(training_step+1))
         fast_step_size = min(1/(2*gamma), slow_step_size/(2*tau)*fast_lr_factor)
         momentum = gamma * fast_step_size
-
-        # Theory-prescribed step-sizes (synth): use the exact tau / fast-step from Theorem 4.1 when
-        # provided, instead of the heuristic tau_factor / fast_lr_factor above. slow_step_size is
-        # theta (learning_rate) and gamma is mu (the "momentum" param); the fast momentum is eta*gamma.
-        tau_override = training_algorithm_parameters.get("tau_override")
-        fast_override = training_algorithm_parameters.get("fast_step_size_override")
-        if tau_override is not None:
-            tau = float(tau_override)
-        if fast_override is not None:
-            fast_step_size = float(fast_override)
-        if tau_override is not None or fast_override is not None:
-            momentum = gamma * fast_step_size
-
-
         slow_sequence = server.get_flat_parameters() # x_f
         average_sequence = slow_sequence.clone().detach() # x_g
         fast_sequence = slow_sequence.clone().detach() # tau*x
@@ -443,15 +381,10 @@ def start_training(params):
         if training_step % (max(nb_training_steps // 100, 1)) == 0:
             print(f"Training Step {training_step}/{nb_training_steps}")
 
-        # synth: record the exact suboptimality of the iterate currently held by the server. At the
-        # top of each outer iteration the server holds the tracked output (x_k for D-GD/PIGS, x_f^k
-        # for the extra-gradient variants, since that branch ends by writing fast_sequence back).
-        if synth:
-            x = server.get_flat_parameters().detach().reshape(-1)
-            synth_subopt[min(training_step, nb_training_steps - 1)] = float(0.5 * (x @ synth_Abar @ x))
+        
 
         # Evaluate Global Model Every Evaluation Delta Steps
-        if (not synth) and training_step % evaluation_delta == 0:
+        if training_step % evaluation_delta == 0:
 
             if val_loader is not None:
 
@@ -585,17 +518,6 @@ def start_training(params):
             
     end_time = time.time()
 
-    if synth:
-        # Forward-fill round indices skipped by the extra-gradient variants (2 rounds / outer iter),
-        # then write the exact-suboptimality curve into the standard train-loss file so the analysis
-        # readers (expe_*_common._mean_train_loss_curve) pick it up unchanged.
-        s = synth_subopt.copy()
-        if np.isnan(s[0]):
-            s[0] = 0.0
-        for k in range(1, len(s)):
-            if np.isnan(s[k]):
-                s[k] = s[k - 1]
-        train_loss_list = s
 
     file_manager.write_array_in_file(
         train_loss_list,

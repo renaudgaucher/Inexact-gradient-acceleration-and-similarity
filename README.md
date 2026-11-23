@@ -7,6 +7,7 @@ Main changes are:
     modifications of train.py to be able to select PIGS or the extragradient (with or without local proximal updates) method
     many small modifications which are harder to track (e.g. how torch optimizer are stored and used in clients)
 - modifications to add a Huber Aggregator and a ClippedMixing pre-aggregator
+- modification in the data loading 
 - Attempt at systematizing the learning rate selection method, by first selecting it in the Byzantine-free setting, and then using it to benchmark the Byzantine resilient case. 
 
 ___

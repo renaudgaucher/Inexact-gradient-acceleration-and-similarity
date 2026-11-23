@@ -1,5 +1,5 @@
 import json
-from byzfl.benchmark.evaluate_results import *
+from byzfl.benchmark.evaluate_results_old import *
 
 with open('config.json', 'r') as f:
     default_config = json.load(f)
