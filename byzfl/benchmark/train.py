@@ -12,7 +12,6 @@ from byzfl import Client, ProxClient, Server, ByzantineClient, DataDistributor, 
 from byzfl.utils.misc import set_random_seed
 from byzfl.benchmark.managers import ParamsManager, FileManager
 import byzfl.fed_framework.models as models
-from byzfl.fed_framework.synthetic import build_controlled_quadratic, make_client_tensors
 
 transforms_hflip = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
 transforms_mnist = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
