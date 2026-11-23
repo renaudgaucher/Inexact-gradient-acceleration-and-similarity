@@ -1177,7 +1177,7 @@ class CAF(object):
           .. math::
              \mu_c = \frac{1}{\sum_i c_i} \sum_{i=1}^n c_i x_i
 
-        - Using the power method [2]_, compute the dominant eigenvector :math:`v` and maximum eigenvalue :math:`\lambda_{max}` of the empirical covariance matrix:
+        - Compute the dominant eigenvector :math:`v` and maximum eigenvalue :math:`\lambda_{max}` of the empirical covariance matrix using a symmetric eigendecomposition:
 
           .. math::
              \Sigma_c = \frac{1}{\sum_i c_i} \sum_{i=1}^n c_i (x_i - \mu_c)(x_i - \mu_c)^\top
@@ -1194,8 +1194,9 @@ class CAF(object):
 
     3. Return the empirical mean :math:`\mu_c` corresponding to the smallest maximum eigenvalue :math:`\lambda_{max}` encountered.
 
-    This algorithm does not assume any upper bound on the spectral norm of the covariance matrix
-    and is especially suited to settings with high-dimensional or heterogeneously distributed data.
+    This algorithm does not assume any upper bound on the spectral norm of the covariance matrix.
+    Its exact dense eigendecomposition requires :math:`O(d^2)` memory, where :math:`d` is the
+    vector dimension, so it is best suited to moderate-dimensional inputs.
 
     Initialization parameters
     --------------------------
@@ -1271,33 +1272,10 @@ class CAF(object):
 
     def __call__(self, vectors):
         tools, vectors = check_vectors_type(vectors)
-        n, dimension = shape(tools, vectors)
+        n, _ = shape(tools, vectors)
 
         if self.f * 2 >= n:
             raise ValueError(f"Cannot tolerate 2f ≥ n. Got f={self.f}, n={n}")
-
-        def compute_dominant_eigenvector(tools, vectors, c, diffs, dimension, max_iters=1):
-            # Compute the dominant eigenvector using a weighted sum approach.
-            if tools == np:
-                vector = np.random.randn(dimension)
-            else:
-                vector = torch.randn(dimension, device=vectors.device)
-            vector = vector / tools.linalg.norm(vector)
-
-            eigenvalue = None
-            for _ in range(max_iters):
-                # Weighted sum for matrix-vector product
-                dot_products = tools.matmul(diffs, vector) # (x_i - mu_c) · vector
-                weighted_sum = tools.sum(c[:, None] * diffs * dot_products[:, None], axis=0) / tools.sum(c)
-                # Normalize the vector
-                next_vector = weighted_sum / tools.linalg.norm(weighted_sum)
-                # Compute eigenvalue as Rayleigh quotient
-                next_eigenvalue = tools.dot(next_vector, weighted_sum)
-
-                vector = next_vector
-                eigenvalue = next_eigenvalue
-
-            return eigenvalue, next_vector
 
         c = ones_vector(tools, n, vectors)
         c_sum = tools.sum(c)
@@ -1311,7 +1289,12 @@ class CAF(object):
 
             # Compute the maximum eigenvector and eigenvalue of the empirical covariance matrix
             diffs = vectors - current_mu_c      # Compute (x_i - current_mu_c)
-            max_eigen_val, max_eigen_vec = compute_dominant_eigenvector(tools, vectors, c, diffs, dimension)
+            weighted_diffs = tools.sqrt(c[:, None]) * diffs
+            covariance = tools.matmul(weighted_diffs.T, weighted_diffs) / c_sum
+            covariance = (covariance + covariance.T) / 2
+            eigenvalues, eigenvectors = tools.linalg.eigh(covariance)
+            max_eigen_val = eigenvalues[-1]
+            max_eigen_vec = eigenvectors[:, -1]
 
             if max_eigen_val < eigen_val:
                 eigen_val = max_eigen_val
@@ -1321,6 +1304,8 @@ class CAF(object):
             tau = tools.matmul(diffs, max_eigen_vec) ** 2
             # Update weights
             tau_max = tau.max()
+            if tau_max == 0:
+                break
             c = c * (1 - tau / tau_max)
             c_sum = tools.sum(c)
 
@@ -1351,7 +1336,7 @@ class SMEA(object):
        .. math::
           \Sigma_S = \frac{1}{|S|} \sum_{i \in S} (x_i - \mu_S)(x_i - \mu_S)^\top
 
-    4. Using the power method [2]_, compute the maximum eigenvalue :math:`\lambda_{\max}(\Sigma_S)` of each subset’s covariance.
+    4. Compute the maximum eigenvalue :math:`\lambda_{\max}(\Sigma_S)` of each subset’s covariance using a symmetric eigendecomposition.
     5. Select the subset :math:`S^\star` that minimizes the maximum eigenvalue:
 
        .. math::
@@ -1439,40 +1424,24 @@ class SMEA(object):
     def __call__(self, vectors):
 
         tools, vectors = check_vectors_type(vectors)
-        n, dimension = shape(tools, vectors)
+        n, _ = shape(tools, vectors)
 
         if self.f * 2 >= n:
             raise ValueError(f"Too many Byzantine clients (2f >= n). Got f={self.f}, n={n}")
 
-        def compute_dominant_eigenvector(diffs, dimension, max_iters=1):
-            if tools == np:
-                vector = np.random.randn(dimension)
-            else:
-                vector = torch.randn(dimension, device=diffs.device)
-            vector = vector / tools.linalg.norm(vector)
-
-            eigenvalue = None
-            for _ in range(max_iters):
-                dot_products = tools.matmul(diffs, vector)
-                weighted_sum = tools.sum(diffs * dot_products[:, None], axis=0)
-                next_vector = weighted_sum / tools.linalg.norm(weighted_sum)
-                next_eigenvalue = tools.dot(next_vector, weighted_sum)
-
-                vector = next_vector
-                eigenvalue = next_eigenvalue
-
-            return eigenvalue, next_vector
-
-        def compute_min_subset(vectors, dimension, n, nb_byz):
+        def compute_min_subset(vectors, n, nb_byz):
             min_eigenvalue = float('inf')
             min_subset = None
 
             for subset in itertools.combinations(range(n), n - nb_byz):
-                subset_grads = vectors[tools.asarray(subset)]
+                subset_grads = vectors[list(subset)]
 
                 avg = tools.mean(subset_grads, axis=0)
                 diffs = subset_grads - avg
-                max_eigen_val, _ = compute_dominant_eigenvector(diffs, dimension)
+                covariance = tools.matmul(diffs.T, diffs) / len(subset_grads)
+                covariance = (covariance + covariance.T) / 2
+                eigenvalues = tools.linalg.eigvalsh(covariance)
+                max_eigen_val = eigenvalues[-1]
 
                 if max_eigen_val < min_eigenvalue:
                     min_eigenvalue = max_eigen_val
@@ -1480,8 +1449,8 @@ class SMEA(object):
 
             return min_subset
 
-        selected_subset = compute_min_subset(vectors, dimension, n, self.f)
-        return vectors[tools.asarray(selected_subset)].mean(axis=0)
+        selected_subset = compute_min_subset(vectors, n, self.f)
+        return vectors[list(selected_subset)].mean(axis=0)
 
 
 

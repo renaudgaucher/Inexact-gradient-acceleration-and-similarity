@@ -22,7 +22,7 @@ default_config = {
         "data_distribution": [
             {
                 "name": "dirichlet_niid",
-                "distribution_parameter": [5.],
+                "distribution_parameter": [1.],
             },
         ],
         "training_algorithm": [
@@ -130,7 +130,7 @@ default_config = {
         "store_per_client_metrics": True,
         "store_models": False,
         "data_folder": "./data",
-        "results_directory": "./results/mnist_full",#./results/tunning_acceleration_params_as_theory",
+        "results_directory": "./results/mnist_att_def",#./results/tunning_acceleration_params_as_theory",
     }
 }
 

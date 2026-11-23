@@ -360,3 +360,45 @@ class TestMeamedAggregation:
              torch.tensor([7., 8., 9.])]
         result = self.agg(x)
         np.testing.assert_allclose(result.numpy(), self.expected_torch.numpy(), rtol=1e-5)
+
+
+class TestCAF:
+
+    def test_numpy_and_torch(self):
+        x = np.array([[0., 0.],
+                      [2., 0.],
+                      [0., 2.],
+                      [8., 8.]])
+
+        numpy_result = byzfl.CAF(1)(x)
+        torch_result = byzfl.CAF(1)(torch.tensor(x))
+
+        assert isinstance(torch_result, torch.Tensor)
+        assert np.isfinite(numpy_result).all()
+        assert torch.isfinite(torch_result).all()
+        np.testing.assert_allclose(torch_result.numpy(), numpy_result, rtol=1e-5, atol=1e-5)
+
+    def test_identical_vectors(self):
+        x = np.array([[3., -2.],
+                      [3., -2.],
+                      [3., -2.]])
+
+        np.testing.assert_allclose(byzfl.CAF(1)(x), np.array([3., -2.]))
+        np.testing.assert_allclose(
+            byzfl.CAF(1)(torch.tensor(x)).numpy(), np.array([3., -2.])
+        )
+
+
+class TestSMEA:
+
+    def test_numpy_and_torch(self):
+        x = np.array([[0., 0.],
+                      [2., 0.],
+                      [100., 100.]])
+        expected = np.array([1., 0.])
+
+        numpy_result = byzfl.SMEA(1)(x)
+        torch_result = byzfl.SMEA(1)(torch.tensor(x))
+
+        np.testing.assert_allclose(numpy_result, expected)
+        np.testing.assert_allclose(torch_result.numpy(), expected)
