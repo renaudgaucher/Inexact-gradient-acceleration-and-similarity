@@ -6,7 +6,5 @@ plot
 tunning
 results
 config.json
-.vscode/settings.json
-*.pdf
-*.pdf
+.vscode
 .DS_Store
