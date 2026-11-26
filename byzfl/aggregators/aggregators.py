@@ -1276,11 +1276,8 @@ class CAF(object):
         if self.f * 2 >= n:
             raise ValueError(f"Cannot tolerate 2f ≥ n. Got f={self.f}, n={n}")
 
-<<<<<<< Updated upstream
-        def compute_dominant_eigenvector(tools, vectors, c, diffs, dimension, max_iters=1):
-=======
+
         def compute_dominant_eigenvector(tools, vectors, c, diffs, dimension, max_iters=20):
->>>>>>> Stashed changes
             # Compute the dominant eigenvector using a weighted sum approach.
             if tools == np:
                 vector = np.random.randn(dimension)
