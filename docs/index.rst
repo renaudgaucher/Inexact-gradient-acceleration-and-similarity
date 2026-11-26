@@ -1,7 +1,4 @@
-.. Byzantine Machine Learning Library Documentation documentation master file, created by
-   sphinx-quickstart on Mon Mar 18 09:16:23 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. Documentation for Inexact Gradient Acceleration and Similarity.
 
 .. toctree::
   :hidden:
@@ -10,26 +7,23 @@
   aggregators/index
   attacks/index
   fed_framework/index
-  team/index
 
 
-.. raw:: html
+Inexact Gradient Acceleration and Similarity
+============================================
 
-   <div style="visibility: hidden;height:1px;">
-ByzFL Documentation
-===================
-.. raw:: html
+This research repository is derived from the
+`ByzFL project <https://github.com/LPD-EPFL/byzfl>`_, with modifications for
+inexact-gradient acceleration and similarity experiments. It is not the
+official ByzFL project or its official documentation.
 
-   </div>
-Welcome to the official documentation of ByzFL, developed by 
-`DCL <http://dcl.epfl.ch>`_ from `EPFL <http://epfl.ch>`_ and
-`WIDE <https://team.inria.fr/wide/>`_ from 
-`INRIA Rennes <https://www.inria.fr/fr/centre-inria-universite-rennes>`_!
+Project overview
+================
 
-What is ByzFL?
-==============
-
-ByzFL is a **Python library for Byzantine-resilient Federated Learning**. It is designed to be fully compatible with both `PyTorch <http://pytorch.org>`_  tensors and `NumPy <http://numpy.org>`_ arrays, making it versatile for a wide range of machine learning workflows.
+The codebase studies Byzantine-resilient federated learning using robust
+aggregation, Byzantine attacks, and accelerated or proximal training methods.
+Its implementation is in the ``byzfl`` package and builds on the upstream
+ByzFL research framework.
 
 Key Features
 ------------
@@ -42,14 +36,15 @@ Key Features
 Installation
 ============
 
-You can install the ByzFL library via pip:
+Install this repository in editable mode from its root:
 
 .. code-block:: bash
 
-   pip install byzfl
+   python -m pip install -e .
 
 
-After installation, the library is ready to use. Here's a quick example of how to use the :ref:`trmean-label` robust aggregator and the :ref:`sf-label` Byzantine attack:
+After installation, the package is ready to use. The example below applies the
+:ref:`trmean-label` robust aggregator and the :ref:`sf-label` Byzantine attack:
 
 
 Quick Start Example - Using PyTorch Tensors
@@ -130,7 +125,7 @@ Output:
 Learn More
 ==========
 
-Explore the key components of ByzFL below:
+Explore the key components below:
 
 .. raw:: html
 
@@ -177,9 +172,15 @@ Explore the key components of ByzFL below:
   </div>
   </div>
 
-License
-=======
+Provenance and reuse
+====================
 
-ByzFL is open-source and distributed under the `MIT License <https://github.com/LPD-EPFL/byzfl/blob/main/LICENSE.txt>`_.
+This repository does not currently provide a general reuse license. Public
+redistribution of this derivative was authorized by the upstream team, but
+terms for reuse of the combined codebase have not been established. Do not
+assume that public availability grants permission to reuse the code.
 
-Our code is hosted on `Github <https://github.com/LPD-EPFL/byzfl>`_. Contributions are welcome!
+This repository is hosted on
+`GitHub <https://github.com/renaudgaucher/Inexact-gradient-acceleration-and-similarity>`_.
+For the upstream project, see
+`LPD-EPFL/byzfl <https://github.com/LPD-EPFL/byzfl>`_.

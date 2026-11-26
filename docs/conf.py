@@ -9,11 +9,11 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-project = 'ByzFL'
-copyright = '2024, EPFL'
-author = 'Geovani Rizk, John Stephan, Marc Gonzalez'
+project = 'Inexact Gradient Acceleration and Similarity'
+copyright = '2025, Renaud Gaucher'
+author = 'Renaud Gaucher'
 
 
 # -- General configuration ---------------------------------------------------
@@ -28,7 +28,6 @@ extensions = ["sphinx.ext.todo",
               "sphinx_copybutton", 
               "sphinx.ext.autosectionlabel", 
               "sphinx.ext.intersphinx",
-              "sphinx_favicon",
               "sphinx_togglebutton"]
 
 
@@ -44,12 +43,8 @@ autosummary_generate=True
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_sidebars = {
-    "team/index": [],
-}
-
 html_theme = "pydata_sphinx_theme"
-html_title = "ByzFL"
+html_title = "Inexact Gradient Acceleration and Similarity"
 html_static_path = ['_static']
 html_css_files = ['custom.css','https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css']
 html_show_sourcelink = False
@@ -58,23 +53,21 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/LPD-EPFL/byzfl",  # Replace with your repo URL
+            "url": "https://github.com/renaudgaucher/Inexact-gradient-acceleration-and-similarity",
             "icon": "fab fa-github",  # Font Awesome GitHub icon
             "type": "fontawesome",  # Ensures the correct icon rendering
         },
         {
-            "name": "PyPi",
-            "url": "https://pypi.org/project/byzfl/",  # Replace with your repo URL
-            "icon": "fa-custom fa-pypi",  # Font Awesome GitHub icon
+            "name": "Upstream ByzFL",
+            "url": "https://github.com/LPD-EPFL/byzfl",
+            "icon": "fab fa-github",
             "type": "fontawesome",  # Ensures the correct icon rendering
         },
 
     ],
 }
 
-html_logo = "_static/byzfl_logo.png"
 html_js_files = ["custom-icon.js"]
-html_favicon = "_static/favicon.ico"
 
 napoleon_custom_sections = [
 	("Initialization parameters", "params_style"),

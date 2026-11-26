@@ -1,5 +1,7 @@
 data
-*pycache*
+__pycache__/
+**/__pycache__/
+*.py[cod]
 .DS_Store
 *OAR*
 plot
@@ -7,4 +9,7 @@ tunning
 results
 config.json
 .vscode
-.DS_Store
+/build/
+/dist/
+*.egg-info/
+/docs/_build/

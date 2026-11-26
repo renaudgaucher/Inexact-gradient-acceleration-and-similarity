@@ -1,13 +1,30 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "byzfl"
-version = "0.0.1"
 description = "Acceleration methods for byzantine fl"
+name = "inexact-gradient-acceleration"
+version = "0.0.2"
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "scipy",
+    "seaborn",
+    "torch",
+    "torchvision",
+]
 
-[tool.setuptools]
-packages = ["byzfl"]
+[project.optional-dependencies]
+test = ["pytest"]
+docs = [
+    "pydata-sphinx-theme",
+    "sphinx",
+    "sphinx-copybutton",
+    "sphinx-togglebutton",
+]
+
+[tool.setuptools.packages.find]
+include = ["byzfl*"]

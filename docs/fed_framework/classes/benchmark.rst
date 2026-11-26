@@ -363,11 +363,11 @@ Extending the Benchmark
 ByzFL is **fully extendable**, allowing users to integrate custom **(pre-)aggregators, attacks, and models**. There are two options:
 
 1. Modify the code within the installed library.
-2. Clone the ByzFL repository, make changes, and then run it:
+2. Clone this research repository, make changes, and then run it:
 
 .. code-block:: console
 
-    git clone https://github.com/LPD-EPFL/byzfl.git
+    git clone https://github.com/renaudgaucher/Inexact-gradient-acceleration-and-similarity.git
 
 **Example: Adding a Custom Aggregator**
 ****************************************
