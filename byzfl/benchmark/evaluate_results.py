@@ -51,9 +51,9 @@ def ensure_list(value):
     return [value]
 
 
-def load_config(path_to_results):
-    """Load the config.json from an experiment directory."""
-    with open(os.path.join(path_to_results, "config.json"), "r") as f:
+def load_config(path_to_results, config_filename="config.json"):
+    """Load an experiment config file."""
+    with open(os.path.join(path_to_results, config_filename), "r") as f:
         data = json.load(f)
 
     bc = data["benchmark_config"]
@@ -163,13 +163,14 @@ def compute_nb_accuracies(nb_steps, evaluation_delta):
 def group_scenarios(scenarios, group_key):
     from collections import defaultdict
     groups = defaultdict(list)
+    group_keys = [group_key] if isinstance(group_key, str) else list(group_key)
     for s in scenarios:
-        key = s[group_key].get('name') if isinstance(s[group_key], dict) else s[group_key]
+        values = tuple(
+            s[key].get('name') if isinstance(s[key], dict) else s[key]
+            for key in group_keys
+        )
+        key = values[0] if isinstance(group_key, str) else values
         groups[key].append(s)
-        # # Create a key from all items except group_key, converting to strings for hashability
-        # key_items = sorted((k, str(v)) for k, v in s.items() if k != group_key)
-        # key = tuple(key_items)
-        # groups[key].append(s)
     print(groups.keys())
     return list(groups.values())
 
@@ -323,15 +324,21 @@ def find_best_hyperparameters(path_to_results):
 
 
 def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", group_dimension="attack", label_dimension=None, show_lr_mom=False,
-                      xlim=None, ylim=None, colors=None, markers=None, dashstyle=None, zoom_inset=False, mv_avg_window=1):
+                      xlim=None, ylim=None, colors=None, markers=None, dashstyle=None, zoom_inset=False, mv_avg_window=1,
+                      use_ref=False, plot_ref=False, path_to_results_ref=None, groups_in_subplots=False):
     """
     General function to plot accuracy or loss curves with flexible varying dimensions.
     
     Parameters:
     - metric: "test_accuracy", "train_accuracy", "train_loss"
-    - group_dimension: dimension that vary between each plot (experiments are grouped by this dimension)
+    - group_dimension: one dimension, or two dimensions (columns first, rows second)
     - xlim, ylim: axis limits (tuples or None)
     - zoom_inset: whether to add a zoomed inset (for loss plots)
+    - use_ref: include reference runs when estimating the excess-loss optimum
+    - plot_ref: display matching reference runs alongside the experiment curves
+    - path_to_results_ref: directory containing ref_config.json and reference runs
+    - groups_in_subplots: display all groups in one figure with shared y-axis and legend;
+      two group dimensions always use this subplot layout
     """
     if colors is None:
         colors = sns.color_palette("colorblind")
@@ -339,16 +346,87 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", gro
         markers = ['o', 'v', 's', '*', 'd', '^', '<']
     if dashstyle is None:
         dashstyle = ['-', '--', '-.', ':', ':', 'solid']
+    group_dimensions = [group_dimension] if isinstance(group_dimension, str) else list(group_dimension)
+    if not 1 <= len(group_dimensions) <= 2:
+        raise ValueError("group_dimension must contain one or two dimensions")
 
     cfg = load_config(path_to_results)
     os.makedirs(path_to_plot, exist_ok=True)
     path_to_hyper = os.path.join(path_to_results, "best_hyperparameters")
 
     scenarios = for_each_experiment(cfg)
-    groups = group_scenarios(scenarios, group_dimension)
+    groups = group_scenarios(scenarios, group_dimensions[0] if len(group_dimensions) == 1 else group_dimensions)
+    ref_scenarios = []
+    ref_cfg = None
+    if use_ref or plot_ref:
+        if path_to_results_ref is None:
+            path_to_results_ref = path_to_results
+        ref_cfg = load_config(path_to_results_ref, "ref_config.json")
+        if (ref_cfg["dataset_name"], ref_cfg["model_name"]) != (cfg["dataset_name"], cfg["model_name"]):
+            raise ValueError("Reference and experiment configurations must use the same dataset and model")
+        ref_scenarios = for_each_experiment(ref_cfg)
+
+    use_subplot_grid = groups_in_subplots or len(group_dimensions) == 2
+    combined_fig = None
+    combined_axes = None
+    group_axes = {}
+    row_values = None
+    row_axes = {}
+    if use_subplot_grid and groups:
+        group_keys = []
+        for group in groups:
+            values = tuple(
+                group[0][dimension].get("name")
+                if isinstance(group[0][dimension], dict)
+                else group[0][dimension]
+                for dimension in group_dimensions
+            )
+            group_keys.append(values)
+
+        if len(group_dimensions) == 2:
+            column_values = list(dict.fromkeys(key[0] for key in group_keys))
+            row_values = list(dict.fromkeys(key[1] for key in group_keys))
+            combined_fig, axes = plt.subplots(
+                len(row_values), len(column_values),
+                figsize=(5 * len(column_values), 4 * len(row_values)),
+                sharex=True, sharey="row", squeeze=False,
+            )
+            combined_axes = list(axes.flat)
+            for row_index, row_value in enumerate(row_values):
+                row_axes[row_value] = axes[row_index, 0]
+                for column_index, column_value in enumerate(column_values):
+                    ax = axes[row_index, column_index]
+                    key = (column_value, row_value)
+                    if key in group_keys:
+                        group_axes[key] = ax
+                    else:
+                        ax.set_visible(False)
+                    if row_index == 0:
+                        ax.set_title(pretty_name(group_dimensions[0], column_value))
+                    if column_index == 0:
+                        ax.set_ylabel(
+                            f"{pretty_name(group_dimensions[1], row_value)}\n"
+                            f"{'Accuracy' if 'accuracy' in metric else 'Excess Train Loss'}"
+                        )
+                    else:
+                        ax.set_ylabel("")
+        else:
+            combined_fig, axes = plt.subplots(
+                1, len(groups), figsize=(5 * len(groups), 5), sharey=True, squeeze=False
+            )
+            combined_axes = list(axes[0])
+            group_axes = {key: ax for key, ax in zip(group_keys, combined_axes)}
+    loss_axis_lowers = {}
     
-    for group in groups:
-        group_value = group[0][group_dimension].get('name') if isinstance(group[0][group_dimension], dict) else group[0][group_dimension]
+    for group_index, group in enumerate(groups):
+        group_values = tuple(
+            group[0][dimension].get("name")
+            if isinstance(group[0][dimension], dict)
+            else group[0][dimension]
+            for dimension in group_dimensions
+        )
+        group_key = group_values
+        group_value = group_values[0] if len(group_values) == 1 else "_".join(map(str, group_values))
         print(group_value)
         
         nb_accuracies = compute_nb_accuracies(cfg["nb_steps"], cfg["evaluation_delta"])
@@ -356,6 +434,7 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", gro
         tab_data = []
         tab_x = []
         labels = []
+        scenario_weight_decays = []
         for scenario in group:
             # Load hyperparameters using a common base_name (exclude only attack, keep training_algorithm)
             base_name = experiment_base_name_from_scenario(scenario, cfg, exclude_keys=['attack'])
@@ -407,9 +486,118 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", gro
             labels.append(pretty_name(label_dimension, scenario[label_dimension]))
             if show_lr_mom:
                 labels[-1] += f" (lr={lr}, mom={mom})"
+            scenario_weight_decays.append(wd)
+
+        reference_curves = []
+        reference_minima = []
+        if use_ref or plot_ref:
+            reference_candidates = {}
+            for scenario, wd in zip(group, scenario_weight_decays):
+                for ref_scenario in ref_scenarios:
+                    if (
+                        ref_scenario["training_algorithm"] != scenario["training_algorithm"]
+                        or ref_scenario["nb_honest"] != scenario["nb_honest"]
+                        or get_name_dimension(ref_scenario, "data_dist") != get_name_dimension(scenario, "data_dist")
+                        or ref_scenario["distribution_parameter"] != scenario["distribution_parameter"]
+                    ):
+                        continue
+
+                    base_name = experiment_base_name_from_scenario(ref_scenario, ref_cfg)
+                    for lr_ref in ref_scenario["lr_list"] or [0.01]:
+                        for mom_ref in ref_scenario["momentum_list"] or [0.0]:
+                            reference_key = (base_name, lr_ref, mom_ref, wd)
+                            reference_candidates.setdefault(
+                                reference_key, (ref_scenario, lr_ref, mom_ref, wd)
+                            )
+
+            if not reference_candidates:
+                raise ValueError(f"No matching reference experiment found for group {group_value}")
+            if len(reference_candidates) > 1:
+                raise ValueError(
+                    f"Expected one matching reference experiment for group {group_value}, "
+                    f"found {len(reference_candidates)}"
+                )
+
+            for ref_scenario, lr_ref, mom_ref, wd in reference_candidates.values():
+                base_name = experiment_base_name_from_scenario(ref_scenario, ref_cfg)
+                full_name = f"{base_name}_lr_{lr_ref}_mom_{mom_ref}_wd_{wd}"
+                ref_data = []
+                ref_nb_accuracies = compute_nb_accuracies(ref_cfg["nb_steps"], ref_cfg["evaluation_delta"])
+                for run_dd in range(ref_cfg["nb_data_distribution_seeds"]):
+                    for run in range(ref_cfg["nb_training_seeds"]):
+                        if metric == "test_accuracy":
+                            file_path = experiment_path(
+                                path_to_results_ref, full_name, "test",
+                                run + ref_cfg["training_seed"],
+                                run_dd + ref_cfg["data_distribution_seed"],
+                            )
+                        elif metric in ["train_accuracy", "val_accuracy"]:
+                            file_path = experiment_path(
+                                path_to_results_ref, full_name, "val",
+                                run + ref_cfg["training_seed"],
+                                run_dd + ref_cfg["data_distribution_seed"],
+                            )
+                        elif metric == "train_loss":
+                            file_path = os.path.join(
+                                path_to_results_ref, full_name,
+                                f"train_loss_tr_seed_{run + ref_cfg['training_seed']}"
+                                f"_dd_seed_{run_dd + ref_cfg['data_distribution_seed']}.txt",
+                            )
+                        else:
+                            raise ValueError(f"Unknown metric: {metric}")
+
+                        values = np.asarray(genfromtxt(file_path, delimiter=",")).flatten()
+                        if metric != "train_loss" and len(values) != ref_nb_accuracies:
+                            raise ValueError(
+                                f"Expected {ref_nb_accuracies} data points for {metric}, "
+                                f"got {len(values)} for {file_path}"
+                            )
+                        ref_data.append(values)
+
+                if metric == "train_loss":
+                    ref_min_len = min(len(values) for values in ref_data)
+                    ref_aligned = np.vstack([values[:ref_min_len] for values in ref_data])
+                    ref_x = np.arange(ref_min_len)
+                    reference_minima.append(np.min(ref_aligned))
+                else:
+                    ref_aligned = np.vstack(ref_data)
+                    ref_x = np.arange(ref_nb_accuracies) * ref_cfg["evaluation_delta"]
+
+                reference_curves.append((
+                    ref_x,
+                    np.mean(ref_aligned, axis=0),
+                    f"{pretty_name('training_algorithm', ref_scenario['training_algorithm'])} w.o. byz",
+                ))
+
+        if metric == "train_loss":
+            l_star_candidates = [np.min(data) for data in tab_data]
+            if use_ref and reference_curves:
+                l_star_candidates.extend(reference_minima)
+            l_star = min(l_star_candidates)
+            tab_data = [data - l_star for data in tab_data]
+            reference_curves = [
+                (x, moving_average_variable_border(y - l_star, mv_avg_window), label)
+                for x, y, label in reference_curves
+            ]
+
+        loss_lower = None
+        if metric == "train_loss":
+            positive_main_values = []
+            for data in tab_data:
+                y = moving_average_variable_border(np.mean(data, axis=0), mv_avg_window)
+                positive = y[np.isfinite(y) & (y > 0)]
+                if positive.size:
+                    positive_main_values.append(positive)
+            if not positive_main_values:
+                raise ValueError("Log-scaled excess loss requires positive non-reference values")
+            loss_lower = min(np.min(values) for values in positive_main_values)
         
         # Now plot
-        fig, ax = plt.subplots(figsize=(8, 5))
+        if use_subplot_grid:
+            fig = combined_fig
+            ax = group_axes[group_key]
+        else:
+            fig, ax = plt.subplots(figsize=(8, 5))
         for i, (data, label) in enumerate(zip(tab_data, labels)):
             y = np.mean(data, axis=0)
             # err = (1.96 * np.std(data, axis=0)) / math.sqrt(cfg["nb_training_seeds"] * cfg["nb_data_distribution_seeds"])
@@ -418,11 +606,24 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", gro
                 y = moving_average_variable_border(y, mv_avg_window)
             ax.plot(x, y, label=label, color=colors[i % len(colors)], linestyle=dashstyle[i % len(dashstyle)], marker=None, markevery=1)# markers[i % len(markers)]
             # ax.fill_between(x, y - err, y + err, alpha=0.25)
+
+        if plot_ref:
+            for i, (x, y, label) in enumerate(reference_curves):
+                ax.plot(
+                    x, y, label=label, color=colors[(len(tab_data) + i) % len(colors)],
+                    linestyle="--", marker=None,
+                )
             
         
         ax.set_xlabel("Round")
-        ylabel = "Accuracy" if "accuracy" in metric else "Loss"
-        ax.set_ylabel(ylabel)
+        if len(group_dimensions) == 2 and group_values[1] != row_values[-1]:
+            ax.set_xlabel("")
+        ylabel = "Accuracy" if "accuracy" in metric else "Excess Train Loss"
+        if len(group_dimensions) == 1:
+            ax.set_ylabel(ylabel if not use_subplot_grid or group_index == 0 else "")
+            ax.set_title(pretty_name(group_dimensions[0], group[0][group_dimensions[0]]))
+        if metric == "train_loss":
+            ax.set_yscale("log")
         if xlim:
             ax.set_xlim(xlim)
         else:
@@ -432,36 +633,102 @@ def plot_metric_curve(path_to_results, path_to_plot, metric="test_accuracy", gro
             else:
                 ax.set_xlim(0, (nb_accuracies - 1) * cfg["evaluation_delta"])
         if ylim:
-            ax.set_ylim(ylim)
+            if metric == "train_loss":
+                lower, upper = ylim
+                if upper <= 0:
+                    raise ValueError("The upper train-loss y-limit must be positive for a log scale")
+                if lower <= 0:
+                    lower = loss_lower
+                if lower >= upper:
+                    raise ValueError("Train-loss y-limits must be positive and increasing on a log scale")
+                if use_subplot_grid and ylim[0] <= 0:
+                    row_key = group_values[1] if len(group_dimensions) == 2 else None
+                    loss_axis_lowers.setdefault(row_key, []).append(lower)
+                ax.set_ylim(lower, upper)
+            else:
+                ax.set_ylim(ylim)
         else:
             if "accuracy" in metric:
                 ax.set_ylim(0, 1)
+            elif metric == "train_loss":
+                if use_subplot_grid:
+                    row_key = group_values[1] if len(group_dimensions) == 2 else None
+                    loss_axis_lowers.setdefault(row_key, []).append(loss_lower * 0.8)
+                else:
+                    ax.set_ylim(bottom=loss_lower * 0.8)
             else:
                 ax.set_ylim(None, None)  # Auto for loss
-        ax.grid()
-        ax.legend()
+        ax.grid(True, which="major", axis="both")
+        if not use_subplot_grid:
+            ax.legend()
         
         if zoom_inset and "loss" in metric:
             # Add zoomed inset for loss
             axins = inset_axes(ax, width="30%", height="30%", loc='upper right')
+            inset_values = []
             for i, (data, label) in enumerate(zip(tab_data, labels)):
                 y = np.mean(data, axis=0)
                 x = tab_x[i]
+                y = moving_average_variable_border(y, mv_avg_window)
                 axins.plot(x, y, color=colors[i % len(colors)], linestyle=dashstyle[i % len(dashstyle)], marker=markers[i % len(markers)], markevery=1)
+                inset_values.append(y)
+            if plot_ref:
+                for i, (x, y, label) in enumerate(reference_curves):
+                    axins.plot(x, y, color=colors[(len(tab_data) + i) % len(colors)], linestyle="--", marker=None)
+                    inset_values.append(y)
             max_x = max(x[-1] for x in tab_x)
-            max_y = max(np.max(np.mean(data, axis=0)) for data in tab_data)
             axins.set_xlim(0, min(max_x, 100))  # zoom to first 100 steps or full limit
-            axins.set_ylim(0, min(max_y, 2))    # Example zoom at top
+            inset_positive_values = np.concatenate([
+                y[np.isfinite(y) & (y > 0)] for y in inset_values
+                if np.any(np.isfinite(y) & (y > 0))
+            ])
+            inset_lower = np.min(inset_positive_values)
+            inset_upper = min(np.max(inset_positive_values), 2)
+            if inset_upper <= inset_lower:
+                inset_upper = np.max(inset_positive_values)
+            if inset_upper <= inset_lower:
+                inset_lower = inset_upper / 1.1
+            axins.set_yscale("log")
+            axins.set_ylim(inset_lower, inset_upper)
             mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
         
-        if True:
-            plt.title(f"{pretty_name(group_dimension, scenario[group_dimension])}")
-        plt.tight_layout()
+        if not use_subplot_grid:
+            fig.tight_layout()
+            plot_name = f"{metric}_{group_value}"
+            fig.savefig(os.path.join(path_to_plot, f"{plot_name}_plot.pdf"))
+            plt.close(fig)
 
+    if use_subplot_grid and groups:
+        if metric == "train_loss":
+            for row_key, lower_limits in loss_axis_lowers.items():
+                representative_ax = row_axes[row_key] if row_values is not None else combined_axes[0]
+                representative_ax.set_ylim(bottom=min(lower_limits))
 
-        plot_name = f"{metric}_{group_value}"
-        plt.savefig(os.path.join(path_to_plot, f"{plot_name}_plot.pdf"))
-        plt.close()
+        all_handles = []
+        all_labels = []
+        seen_labels = set()
+        for ax in combined_axes:
+            handles, labels = ax.get_legend_handles_labels()
+            for handle, label in zip(handles, labels):
+                if label not in seen_labels:
+                    all_handles.append(handle)
+                    all_labels.append(label)
+                    seen_labels.add(label)
+
+        if all_handles:
+            combined_fig.legend(
+                all_handles,
+                all_labels,
+                loc="lower center",
+                bbox_to_anchor=(0.52, 0.11),
+                ncol=min(5, len(all_labels)),
+            )
+        combined_fig.tight_layout(rect=(0.02, 0.14 if all_handles else 0.02, 1, 1))
+        combined_fig.savefig(
+            os.path.join(path_to_plot, f"{metric}_all_groups_plot.pdf"),
+            bbox_inches="tight",
+        )
+        plt.close(combined_fig)
 
 
 # Backward compatibility

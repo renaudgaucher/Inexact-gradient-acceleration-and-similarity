@@ -36,33 +36,33 @@ default_config = {
                 "learning_rate": [0.1], 
                 }
             },
-            {
-            "name": "FedProxyProx", # PIGS
-            "parameters": {
-                "optimizer_name": "SGD",
-                "momentum": [0.],
-                "optimizer_parameters": { 
-                            },
-                "learning_rate":  [2.], #10.,
-                "prox_optimizaer_name": "SGD",
-                "prox_optimizer_params": {"learning_rate" : 0.05,
-                                          "security_factor" : 10},
+            # {
+            # "name": "FedProxyProx", # PIGS
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "momentum": [0.],
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate":  [2.], #10.,
+            #     "prox_optimizaer_name": "SGD",
+            #     "prox_optimizer_params": {"learning_rate" : 0.05,
+            #                               "security_factor" : 10},
                 
-                }
-            },
-            {
-            "name": "AccExtraGradProx", 
-            "parameters": {
-                "optimizer_name": "SGD",
-                "optimizer_parameters": { 
-                            },
-                "learning_rate":  [0.5],
-                "momentum":[0.01], 
-                "prox_optimizer_name": "SGD",
-                "prox_optimizer_params": {"learning_rate" : 0.05,
-                                          "security_factor" : 10},
-                }
-            },
+            #     }
+            # },
+            # {
+            # "name": "AccExtraGradProx", 
+            # "parameters": {
+            #     "optimizer_name": "SGD",
+            #     "optimizer_parameters": { 
+            #                 },
+            #     "learning_rate":  [0.5],
+            #     "momentum":[0.01], 
+            #     "prox_optimizer_name": "SGD",
+            #     "prox_optimizer_params": {"learning_rate" : 0.05,
+            #                               "security_factor" : 10},
+            #     }
+            # },
             {
             "name": "AccExtraGrad",
             "parameters": {
@@ -142,6 +142,6 @@ if __name__ == "__main__":
 
     with open('ref_config.json', 'w') as f:
         from ref_config import make_ref_config
-        ref_config = make_ref_config(default_config, steps_multiplier=1.)
+        ref_config = make_ref_config(default_config, steps_multiplier=1.5,same_algs=False)
         json.dump(ref_config, f, indent=4)
     run_benchmark(10, config_name='ref_config.json')

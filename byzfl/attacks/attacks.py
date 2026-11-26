@@ -697,7 +697,7 @@ class Optimal_ALittleIsEnough:
 
     """
 
-    def __init__(self, agg=Average(), pre_agg_list=[Clipping()], f=1, evals=20, start=0.0, delta=10.0, ratio=0.8):
+    def __init__(self, agg=Average(), pre_agg_list=[Clipping()], f=1, evals=25, start=0.0, delta=1.0, ratio=0.8):
 
         self.agg = agg
         self.pre_agg_list = pre_agg_list
