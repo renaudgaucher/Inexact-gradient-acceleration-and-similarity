@@ -1,6 +1,7 @@
-LICENSE.txt
+LICENSE
 README.md
 pyproject.toml
+setup.py
 byzfl/__init__.py
 byzfl.egg-info/PKG-INFO
 byzfl.egg-info/SOURCES.txt

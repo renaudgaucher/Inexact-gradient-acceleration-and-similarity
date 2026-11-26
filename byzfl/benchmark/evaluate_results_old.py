@@ -3066,8 +3066,10 @@ def paper_used_plots_with_ref_aggregation_comparison(path_to_results, path_to_pl
                                         if len(tab_data_ref) > 0:
                                             ylim_lower = np.min([np.min(tab_data_ref), ylim_lower])
                                             ylim_upper = np.max([tab_data_ref[0] * 1.1, ylim_upper])
+                                    except FileNotFoundError:
+                                        print(f"{data_path_ref} not found")
                                     except Exception:
-                                        pass
+                                        print(f"error in using ref for setting ylim with ", data_path_ref)
 
                         # Build color and linestyle mapping for consistent colors and styles across subfigures
                         color_mapping = {}

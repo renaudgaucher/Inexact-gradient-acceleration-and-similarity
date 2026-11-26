@@ -29,7 +29,9 @@ To run the sweep across proportion of Byzantine clients and heterogeneity procee
 
 This produces experiments only with the ALIE attack.
 
-To compare the efficiency of the different attacks, run expe_mnist_att_def.py and then analysis_mnist_att_def.py
+To compare the efficiency of the different attacks on the different accelerated or not methods, 
+1. run expe_mnist_att_def.py 
+2. run analysis_mnist_att_def.py
 
 ___
 

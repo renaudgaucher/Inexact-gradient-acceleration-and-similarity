@@ -9,10 +9,11 @@ with open('config.json', 'r') as f:
     path_to_plot = "./plot/mnist/per_attack"
 
     nb_steps = 3000
-    # use_ref= True
-    use_ref=False
+    use_ref= True
     path_to_results_ref = None 
     plot_ref=True
-    paper_used_plots_with_ref_aggregation_comparison(path_training_results, path_to_plot, metric='train_loss', nb_steps_displayed=nb_steps,
-                              path_to_results_ref=path_to_results_ref, zoom=use_ref)
+    # paper_used_plots_with_ref_aggregation_comparison(path_training_results, path_to_plot, metric='train_loss', nb_steps_displayed=nb_steps,
+    #                           path_to_results_ref=path_to_results_ref, zoom=use_ref)
+    # paper_used_plots_with_ref(path_training_results, path_to_plot, metric='train_loss', nb_steps_displayed=nb_steps,
+    #                           path_to_results_ref=path_to_results_ref, zoom=use_ref,plot_ref=plot_ref)
     
