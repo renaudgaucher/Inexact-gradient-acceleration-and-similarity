@@ -3,12 +3,12 @@
 This code is based on the Byzfl library (https://byzfl.epfl.ch).
 Main changes are:
 - modifications to run the PIGS and Extragradients algorithms
-    modifications of clients.py to design a ProxClient that handles proximal local updates
-    modifications of train.py to be able to select PIGS or the extragradient (with or without local proximal updates) method
-    many small modifications which are harder to track (e.g. how torch optimizer are stored and used in clients)
+   - modifications of clients.py to design a ProxClient that handles proximal local updates
+   - modifications of train.py to be able to select PIGS or the extragradient (with or without local proximal updates) method
+   - many small modifications which are harder to track (e.g. how torch optimizer are stored and used in clients)
 - modifications to add a Huber Aggregator and a ClippedMixing pre-aggregator
 - modification of the data loading pipeline to cache datasets in GPU memory
-- Attempt at systematizing the learning rate selection method, by first selecting it in the Byzantine-free setting, and then using it to benchmark the Byzantine resilient case. 
+- Attempt at systematizing the learning rate selection method, by first selecting it in the Byzantine-free setting, and then using it to benchmark the Byzantine resilient case
 
 ___
 
